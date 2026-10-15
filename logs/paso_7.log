@@ -1,0 +1,23 @@
+
+=== MODO EMULADOR STM32 ACTIVADO ===
+Transmitiendo flujo IMU emulado durante 10.0 s...
+Iniciando emulador STM32 con 3600 muestras a 100 Hz...
+  [STM32 EMULADO] t=   816 ms | Accel: [ -0.71,  +0.02, -10.80] m/s² | Gyro: [-0.004, +0.007, +0.002] rad/s
+  [STM32 EMULADO] t=  1650 ms | Accel: [ -0.70,  +0.02, -10.01] m/s² | Gyro: [+0.004, +0.006, -0.003] rad/s
+  [STM32 EMULADO] t=  2483 ms | Accel: [ -0.64,  +0.02,  -9.53] m/s² | Gyro: [-0.004, -0.002, -0.008] rad/s
+  [STM32 EMULADO] t=  3316 ms | Accel: [ -0.60,  +0.01,  -9.30] m/s² | Gyro: [-0.002, -0.007, -0.002] rad/s
+  [STM32 EMULADO] t=  4150 ms | Accel: [ -0.54,  +0.02,  -9.18] m/s² | Gyro: [+0.001, -0.012, -0.001] rad/s
+  [STM32 EMULADO] t=  4983 ms | Accel: [ -0.49,  +0.03,  -9.12] m/s² | Gyro: [+0.001, -0.008, -0.001] rad/s
+  [STM32 EMULADO] t=  5816 ms | Accel: [ -0.45,  +0.00,  -9.13] m/s² | Gyro: [-0.004, -0.009, -0.005] rad/s
+  [STM32 EMULADO] t=  6650 ms | Accel: [ -0.40,  +0.03,  -9.14] m/s² | Gyro: [-0.000, -0.011, -0.005] rad/s
+  [STM32 EMULADO] t=  7483 ms | Accel: [ -0.36,  +0.01,  -9.20] m/s² | Gyro: [+0.000, -0.010, -0.003] rad/s
+  [STM32 EMULADO] t=  8316 ms | Accel: [ -0.35,  +0.01,  -9.29] m/s² | Gyro: [-0.002, -0.011, -0.010] rad/s
+  [STM32 EMULADO] t=  9150 ms | Accel: [ -0.33,  +0.01,  -9.36] m/s² | Gyro: [-0.001, -0.009, -0.005] rad/s
+  [STM32 EMULADO] t=  9983 ms | Accel: [ -0.32,  +0.00,  -9.41] m/s² | Gyro: [-0.001, -0.007, -0.007] rad/s
+  [STM32 EMULADO] t= 10816 ms | Accel: [ -0.31,  +0.00,  -9.46] m/s² | Gyro: [+0.001, -0.009, -0.002] rad/s
+  [STM32 EMULADO] t= 11650 ms | Accel: [ -0.28,  +0.00,  -9.51] m/s² | Gyro: [+0.001, -0.003, -0.008] rad/s
+  [STM32 EMULADO] t= 12483 ms | Accel: [ -0.27,  +0.01,  -9.56] m/s² | Gyro: [+0.002, -0.005, -0.006] rad/s
+  [STM32 EMULADO] t= 13316 ms | Accel: [ -0.26,  -0.01,  -9.58] m/s² | Gyro: [+0.004, -0.001, -0.004] rad/s
+  [STM32 EMULADO] t= 14150 ms | Accel: [ -0.27,  +0.01,  -9.61] m/s² | Gyro: [+0.001, -0.003, -0.007] rad/s
+
+[Archivo guardado] 852 muestras guardadas en: C:\Users\Alfonso\Documents\antigravity\vibrant-franklin\data\physical_imu_log.csv (85.0 Hz medio)

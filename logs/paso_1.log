@@ -1,0 +1,22 @@
+Cargando escenario: C:\Users\Alfonso\Documents\antigravity\vibrant-franklin\scenarios\escenario_base.json
+
+
+     JSBSim Flight Dynamics Model v1.3.2 [GitHub build 1985/commit 14d23722f7f529e62cd488a76e5e8c4320613c3a] Oct  8 2026 18:28:12
+            [JSBSim-ML v2.0]
+
+JSBSim startup beginning ...
+
+Iniciando simulación de vuelo: 150.0 s (18000 pasos dinámicos a 120.0 Hz)...
+
+[Archivo generado] C:\Users\Alfonso\Documents\antigravity\vibrant-franklin\data\flight_log.csv (3000 registros a 20.0 Hz)
+[Archivo generado] C:\Users\Alfonso\Documents\antigravity\vibrant-franklin\data\camera_ground_frames.csv (750 fotogramas a 5.0 FPS)
+[Archivo generado] C:\Users\Alfonso\Documents\antigravity\vibrant-franklin\data\camera_sky_frames.csv (300 fotogramas a 2.0 FPS)
+[Archivo generado] C:\Users\Alfonso\Documents\antigravity\vibrant-franklin\data\imu_measurements.csv (9000 muestras a 100.0 Hz)
+
+--- Verificación de integridad de datos ---
+  [OK] Cero valores nulos y cero valores infinitos.
+  [OK] Timestamps estrictamente monótonos crecientes.
+  [OK] Altitud segura y consistente: min 446.2 m, max 1009.1 m.
+  [OK] Velocidad física coherente: min 34.4 m/s, max 48.6 m/s (66.9 a 94.4 kts).
+
+>>> ¡Simulación y registro completados exitosamente con 100% de integridad física y temporal! <<<

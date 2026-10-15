@@ -1,0 +1,104 @@
+{
+  "scenario_name": "escenario_base_c172p",
+  "description": "Escenario extendido: C172P realiza un circuito oval sobre Jalisco. Incluye virajes coordinados, ascenso, descenso y vuelo recto en varias fases. Duracion total 150 s.",
+  "aircraft": {
+    "model": "c172p",
+    "tail_number": "XB-NAV01"
+  },
+  "initial_conditions": {
+    "latitude_deg": 20.6534,
+    "longitude_deg": -103.3456,
+    "altitude_msl_m": 1000.0,
+    "airspeed_kts": 90.0,
+    "heading_deg": 90.0,
+    "pitch_deg": 1.5,
+    "roll_deg": 0.0,
+    "engine_running": true,
+    "throttle": 0.72,
+    "mixture": 1.0
+  },
+  "simulation_settings": {
+    "duration_sec": 150.0,
+    "sim_frequency_hz": 120.0,
+    "log_frequency_hz": 20.0
+  },
+  "flight_plan_maneuvers": [
+    {
+      "start_sec": 0.0,
+      "end_sec": 20.0,
+      "name": "Nivelado inicial y estabilizacion",
+      "target_roll_deg": 0.0,
+      "target_pitch_deg": 2.0
+    },
+    {
+      "start_sec": 20.0,
+      "end_sec": 45.0,
+      "name": "Viraje coordinado a estribor (primer giro)",
+      "target_roll_deg": 18.0,
+      "target_pitch_deg": 2.5
+    },
+    {
+      "start_sec": 45.0,
+      "end_sec": 65.0,
+      "name": "Vuelo recto hacia el oeste",
+      "target_roll_deg": 0.0,
+      "target_pitch_deg": 2.0
+    },
+    {
+      "start_sec": 65.0,
+      "end_sec": 70.0,
+      "name": "Ascenso suave",
+      "target_roll_deg": 0.0,
+      "target_pitch_deg": 5.0
+    },
+    {
+      "start_sec": 70.0,
+      "end_sec": 95.0,
+      "name": "Viraje coordinado a estribor (segundo giro)",
+      "target_roll_deg": 18.0,
+      "target_pitch_deg": 2.5
+    },
+    {
+      "start_sec": 95.0,
+      "end_sec": 120.0,
+      "name": "Vuelo recto hacia el este con descenso gradual",
+      "target_roll_deg": 0.0,
+      "target_pitch_deg": -1.0
+    },
+    {
+      "start_sec": 120.0,
+      "end_sec": 135.0,
+      "name": "Viraje suave de alineacion final",
+      "target_roll_deg": 12.0,
+      "target_pitch_deg": 2.0
+    },
+    {
+      "start_sec": 135.0,
+      "end_sec": 150.0,
+      "name": "Nivelado y estabilizacion final",
+      "target_roll_deg": 0.0,
+      "target_pitch_deg": 2.0
+    }
+  ],
+  "sensor_interfaces": {
+    "ground_camera": {
+      "fps": 5.0,
+      "mount": "nadir",
+      "fov_deg": 70.0,
+      "resolution": [1920, 1080]
+    },
+    "sky_camera": {
+      "fps": 2.0,
+      "mount": "zenith",
+      "fov_deg": 60.0,
+      "resolution": [1920, 1080]
+    },
+    "imu": {
+      "sampling_rate_hz": 100.0,
+      "accel_range_g": 4.0,
+      "gyro_range_dps": 500.0,
+      "noise_density_accel_ug_rthz": 100.0,
+      "noise_density_gyro_mdps_rthz": 10.0
+    }
+  }
+}

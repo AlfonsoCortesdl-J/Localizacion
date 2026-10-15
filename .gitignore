@@ -1,0 +1,31 @@
+# Entorno virtual
+#.venv/
+#__pycache__/
+#*.pyc
+#*.pyo
+
+# Datos generados (archivos CSV grandes)
+#data/flight_log.csv
+#data/imu_measurements.csv
+#data/camera_ground_frames.csv
+#data/camera_sky_frames.csv
+#data/visual_navigation_results.csv
+#data/fused_navigation_log.csv
+#data/physical_imu_log.csv
+#data/reference_map_meta.json
+#data/physical_imu_log.csv
+#data/test_cam_view.png
+
+# Imagenes generadas (cientos de archivos)
+#data/camera_ground/
+#data/camera_sky/
+#data/reference_map.png
+
+# Graficas generadas
+#plots/
+
+# IDEs y sistema
+#.vscode/
+#.idea/
+#.DS_Store
+#Thumbs.db

@@ -1,0 +1,8 @@
+Cargando datos para graficación desde: C:\Users\Alfonso\Documents\antigravity\vibrant-franklin\data\flight_log.csv...
+  [Gráfico generado] C:\Users\Alfonso\Documents\antigravity\vibrant-franklin\plots\trajectory.png
+  [Gráfico generado] C:\Users\Alfonso\Documents\antigravity\vibrant-franklin\plots\altitude.png
+  [Gráfico generado] C:\Users\Alfonso\Documents\antigravity\vibrant-franklin\plots\velocity.png
+  [Gráfico generado] C:\Users\Alfonso\Documents\antigravity\vibrant-franklin\plots\attitude.png
+  [Gráfico generado] C:\Users\Alfonso\Documents\antigravity\vibrant-franklin\plots\imu_accelerations.png
+
+>>> ¡Todas las gráficas de análisis fueron generadas exitosamente en la carpeta plots/! <<<

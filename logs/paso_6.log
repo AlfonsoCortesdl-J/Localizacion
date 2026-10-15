@@ -1,0 +1,17 @@
+Cargando conjuntos de datos para fusión sensorial...
+Ejecutando EKF INS/Visual sobre 3600 muestras de IMU (59.9 Hz, dt = 0.01670 s)...
+
+[Archivo guardado] Log de navegación fusionada EKF en: C:\Users\Alfonso\Documents\antigravity\vibrant-franklin\data\fused_navigation_log.csv
+
+=================================================================
+MÉTRICAS FORMALES DE FUSIÓN SENSORIAL EKF (INS + VISIÓN)
+=================================================================
+• Error RMSE - INS Pura sin correcciones (deriva inercial) :     4.03 m
+• Error RMSE - Navegación Fusionada EKF (INS + Visión)     :   105.84 m
+• Error Circular Probable 50% (CEP-50)                    :    49.22 m
+• Error Circular Probable 95% (CEP-95)                    :   229.17 m
+• Error medio de actitud / rumbo                          :    51.58°
+• Frecuencia de solución de navegación disponible         : 59.9 Hz (tasa de la IMU)
+=================================================================
+  [Gráfico generado] C:\Users\Alfonso\Documents\antigravity\vibrant-franklin\plots\sensor_fusion_trajectory.png
+  [Gráfico generado] C:\Users\Alfonso\Documents\antigravity\vibrant-franklin\plots\sensor_fusion_errors.png

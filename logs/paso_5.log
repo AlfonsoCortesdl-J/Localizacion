@@ -1,0 +1,23 @@
+[ WARN:0@10.417] global loadsave.cpp:278 cv::findDecoder imread_('C:\Users\Alfonso\Documents\antigravity\vibrant-franklin\data\camera_ground\img_ground_00301.png'): can't open/read file: check file path/integrity
+Cargando metadatos de vuelo desde: C:\Users\Alfonso\Documents\antigravity\vibrant-franklin\data\camera_ground_frames.csv...
+Indexando características visuales del ortomapa de referencia...
+  [OK] 1680 puntos clave indexados en el mapa global.
+
+Iniciando estimación de Odometría Visual y Map Matching sobre 750 fotogramas...
+  Frame 050 (t= 10.0s) | Error VO pura: 760.84 m | Error VO+Mapa: 1090.30 m | Inliers:   9
+  Frame 100 (t= 20.0s) | Error VO pura: 1246.96 m | Error VO+Mapa: 1153.90 m | Inliers:   8
+  Frame 150 (t= 30.0s) | Error VO pura: 2465.71 m | Error VO+Mapa: 1994.76 m | Inliers:   6
+  Frame 200 (t= 40.0s) | Error VO pura: 1646.01 m | Error VO+Mapa: 536.77 m | Inliers:  10
+  Frame 250 (t= 50.0s) | Error VO pura: 2893.21 m | Error VO+Mapa: 1555.82 m | Inliers:   9
+  Frame 300 (t= 60.0s) | Error VO pura: 4723.12 m | Error VO+Mapa: 3462.93 m | Inliers:   6
+Traceback (most recent call last):
+  File "C:\Users\Alfonso\Documents\antigravity\vibrant-franklin\src\visual_navigation.py", line 457, in <module>
+    run_visual_navigation(csv_file, frames_path, map_file, meta_file)
+    ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Alfonso\Documents\antigravity\vibrant-franklin\src\visual_navigation.py", line 260, in run_visual_navigation
+    dx_b, dy_b, dyaw, inliers = vo.estimate_motion(prev_img, curr_img, alt_agl)
+                                ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Alfonso\Documents\antigravity\vibrant-franklin\src\visual_navigation.py", line 68, in estimate_motion
+    gray2 = cv2.cvtColor(img_curr, cv2.COLOR_BGR2GRAY) if len(img_curr.shape) == 3 else img_curr
+                                                              ^^^^^^^^^^^^^^
+AttributeError: 'NoneType' object has no attribute 'shape'
