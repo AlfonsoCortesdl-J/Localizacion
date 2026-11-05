@@ -61,7 +61,8 @@ class VirtualGroundCamera(PinholeCamera):
         meta_json_path: str,
         width: int = 640,
         height: int = 480,
-        fov_deg: float = 70.0
+        fov_deg: float = 70.0,
+        semantic_map_path: Optional[str] = None,
     ):
         super().__init__(width, height, fov_deg)
 
@@ -71,8 +72,15 @@ class VirtualGroundCamera(PinholeCamera):
             raise FileNotFoundError(f"Metadatos del mapa no encontrados: {meta_json_path}")
 
         self.map_img = cv2.imread(reference_map_path)
+        if self.map_img is None:
+            raise ValueError(f"No se pudo leer el mapa de referencia: {reference_map_path}")
         with open(meta_json_path, "r", encoding="utf-8") as f:
             self.map_meta = json.load(f)
+        if semantic_map_path is None:
+            semantic_map_path = os.path.join(os.path.dirname(reference_map_path), "reference_map_labels.png")
+        self.semantic_map = cv2.imread(semantic_map_path, cv2.IMREAD_GRAYSCALE) if os.path.exists(semantic_map_path) else None
+        if self.semantic_map is not None and self.semantic_map.shape != self.map_img.shape[:2]:
+            raise ValueError("El mapa semántico debe tener el mismo alto y ancho que reference_map.png")
 
         self.map_w_px = self.map_meta["width_px"]
         self.map_h_px = self.map_meta["height_px"]
@@ -92,6 +100,56 @@ class VirtualGroundCamera(PinholeCamera):
             [0.0, 0.0, 1.0]
         ], dtype=np.float64)
 
+    def _map_to_camera_homography(
+        self,
+        lat_deg: float,
+        lon_deg: float,
+        altitude_agl_m: float,
+        roll_deg: float,
+        pitch_deg: float,
+        yaw_deg: float,
+    ) -> np.ndarray:
+        """Calcula la homografía común para la imagen y su máscara semántica."""
+        dx_m = (lon_deg - self.center_lon) * self.meters_per_deg_lon
+        dy_m = (lat_deg - self.center_lat) * self.METERS_PER_DEG_LAT
+        phi, theta, psi = np.radians([roll_deg, pitch_deg, yaw_deg])
+        R_x = np.array([[1.0, 0.0, 0.0], [0.0, np.cos(phi), -np.sin(phi)], [0.0, np.sin(phi), np.cos(phi)]])
+        R_y = np.array([[np.cos(theta), 0.0, np.sin(theta)], [0.0, 1.0, 0.0], [-np.sin(theta), 0.0, np.cos(theta)]])
+        R_z = np.array([[np.cos(psi), -np.sin(psi), 0.0], [np.sin(psi), np.cos(psi), 0.0], [0.0, 0.0, 1.0]])
+        R_ned_b = R_x @ R_y @ R_z
+        R_ned_c = self.R_b_c @ R_ned_b
+        x_map_center = self.map_w_px / 2.0
+        y_map_center = self.map_h_px / 2.0
+        A = np.array([
+            [0.0, -self.gsd, y_map_center * self.gsd - dy_m],
+            [self.gsd, 0.0, -x_map_center * self.gsd - dx_m],
+            [0.0, 0.0, max(10.0, altitude_agl_m)],
+        ], dtype=np.float64)
+        return self.K @ (R_ned_c @ A)
+
+    def render_semantic_mask(
+        self,
+        lat_deg: float,
+        lon_deg: float,
+        altitude_agl_m: float,
+        roll_deg: float,
+        pitch_deg: float,
+        yaw_deg: float,
+        ignore_label: int = 255,
+    ) -> np.ndarray:
+        """Proyecta etiquetas con la misma pose que el fotograma, sin suavizar clases."""
+        if self.semantic_map is None:
+            raise RuntimeError("No hay mapa semántico. Genera data/reference_map_labels.png primero.")
+        H = self._map_to_camera_homography(
+            lat_deg, lon_deg, altitude_agl_m, roll_deg, pitch_deg, yaw_deg
+        )
+        return cv2.warpPerspective(
+            self.semantic_map, H, (self.width, self.height),
+            flags=cv2.INTER_NEAREST,
+            borderMode=cv2.BORDER_CONSTANT,
+            borderValue=int(ignore_label),
+        )
+
     def render_frame(
         self,
         lat_deg: float,
@@ -105,47 +163,9 @@ class VirtualGroundCamera(PinholeCamera):
         """
         Renderiza el fotograma de terreno mediante homografía proyectiva exacta.
         """
-        # 1. Desplazamiento métrico respecto al centro del mapa
-        dx_m = (lon_deg - self.center_lon) * self.meters_per_deg_lon  # Este (+)
-        dy_m = (lat_deg - self.center_lat) * self.METERS_PER_DEG_LAT  # Norte (+)
-
-        # 2. Rotación de actitud aeroespacial NED -> Body Frame (Z-Y-X)
-        phi = np.radians(roll_deg)
-        theta = np.radians(pitch_deg)
-        psi = np.radians(yaw_deg)
-
-        R_x = np.array([
-            [1.0, 0.0, 0.0],
-            [0.0, np.cos(phi), -np.sin(phi)],
-            [0.0, np.sin(phi), np.cos(phi)]
-        ])
-        R_y = np.array([
-            [np.cos(theta), 0.0, np.sin(theta)],
-            [0.0, 1.0, 0.0],
-            [-np.sin(theta), 0.0, np.cos(theta)]
-        ])
-        R_z = np.array([
-            [np.cos(psi), -np.sin(psi), 0.0],
-            [np.sin(psi), np.cos(psi), 0.0],
-            [0.0, 0.0, 1.0]
-        ])
-        R_ned_b = R_x @ R_y @ R_z
-
-        # Rotación completa NED -> Camera
-        R_ned_c = self.R_b_c @ R_ned_b
-
-        # 3. Matriz de proyección afín desde píxeles del mapa a coordenadas relativas NED
-        x_map_center = self.map_w_px / 2.0
-        y_map_center = self.map_h_px / 2.0
-
-        A = np.array([
-            [0.0, -self.gsd, y_map_center * self.gsd - dy_m],
-            [self.gsd, 0.0, -x_map_center * self.gsd - dx_m],
-            [0.0, 0.0, max(10.0, altitude_agl_m)]
-        ], dtype=np.float64)
-
-        # Matriz proyectiva (Homografía) Map -> Camera
-        M_map_to_cam = self.K @ (R_ned_c @ A)
+        M_map_to_cam = self._map_to_camera_homography(
+            lat_deg, lon_deg, altitude_agl_m, roll_deg, pitch_deg, yaw_deg
+        )
 
         # Aplicar transformación de perspectiva
         rendered = cv2.warpPerspective(

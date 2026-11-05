@@ -10,7 +10,11 @@ Salidas:
    Fotogramas de la cámara orientada al terreno (Nadir).
 2. data/camera_sky/img_sky_XXXXX.png:
    Fotogramas del rastreador estelar (Zenith / Star Tracker).
-3. plots/camera_dashboard.png:
+3. data/camera_ground_masks/img_ground_XXXXX.png:
+   Máscaras semánticas alineadas con los fotogramas de terreno.
+4. data/semantic_dataset.csv:
+   Rutas de las imágenes/máscaras y metadatos sincronizados.
+5. plots/camera_dashboard.png:
    Panel visual de ingeniería que ilustra:
    - La huella proyectada de la cámara en el ortomapa (Footprint).
    - El fotograma de terreno capturado con puntos característicos ORB.
@@ -46,23 +50,31 @@ def render_all_camera_frames(
     ground_csv = os.path.join(data_dir, "camera_ground_frames.csv")
     sky_csv = os.path.join(data_dir, "camera_sky_frames.csv")
     map_png = os.path.join(data_dir, "reference_map.png")
+    map_labels = os.path.join(data_dir, "reference_map_labels.png")
     map_meta = os.path.join(data_dir, "reference_map_meta.json")
 
     if not os.path.exists(ground_csv) or not os.path.exists(sky_csv):
         raise FileNotFoundError("Metadatos de cámaras no encontrados. Ejecuta primero record_flight.py.")
     if not os.path.exists(map_png) or not os.path.exists(map_meta):
         raise FileNotFoundError("Mapa de referencia no encontrado. Ejecuta primero generate_reference_map.py.")
+    if not os.path.exists(map_labels):
+        raise FileNotFoundError("Máscara semántica no encontrada. Ejecuta primero generate_reference_map.py actualizado.")
 
     df_ground = pd.read_csv(ground_csv)
     df_sky = pd.read_csv(sky_csv)
 
     dir_ground = os.path.join(data_dir, "camera_ground")
+    dir_ground_masks = os.path.join(data_dir, "camera_ground_masks")
     dir_sky = os.path.join(data_dir, "camera_sky")
     os.makedirs(dir_ground, exist_ok=True)
+    os.makedirs(dir_ground_masks, exist_ok=True)
     os.makedirs(dir_sky, exist_ok=True)
 
     print("Inicializando modelos de cámaras virtuales (Nadir y Zenith)...")
-    cam_ground = VirtualGroundCamera(map_png, map_meta, width=640, height=480, fov_deg=70.0)
+    cam_ground = VirtualGroundCamera(
+        map_png, map_meta, width=640, height=480, fov_deg=70.0,
+        semantic_map_path=map_labels,
+    )
     cam_sky = VirtualSkyCamera(width=640, height=480, fov_deg=60.0)
 
     # Subconjunto de fotogramas a renderizar (None = todos)
@@ -76,6 +88,7 @@ def render_all_camera_frames(
     print(f"\nRenderizando {len(indices_ground)} fotogramas de Camara de Terreno en {dir_ground}...")
     sample_ground_frame = None
     sample_ground_row = None
+    dataset_rows = []
 
     for idx in indices_ground:
         row = df_ground.iloc[idx]
@@ -89,6 +102,29 @@ def render_all_camera_frames(
         )
         out_filename = os.path.join(dir_ground, row["image_filename"])
         cv2.imwrite(out_filename, frame)
+
+        mask = cam_ground.render_semantic_mask(
+            lat_deg=float(row["lat_geod_deg"]),
+            lon_deg=float(row["lon_geod_deg"]),
+            altitude_agl_m=float(row["altitude_agl_m"]),
+            roll_deg=float(row["roll_deg"]),
+            pitch_deg=float(row["pitch_deg"]),
+            yaw_deg=float(row["yaw_deg"]),
+        )
+        mask_filename = os.path.splitext(row["image_filename"])[0] + ".png"
+        cv2.imwrite(os.path.join(dir_ground_masks, mask_filename), mask)
+        dataset_rows.append({
+            "image_path": os.path.join("camera_ground", row["image_filename"]),
+            "mask_path": os.path.join("camera_ground_masks", mask_filename),
+            "sim_time_sec": float(row["sim_time_sec"]),
+            "timestamp_iso": row.get("timestamp_iso", ""),
+            "lat_geod_deg": float(row["lat_geod_deg"]),
+            "lon_geod_deg": float(row["lon_geod_deg"]),
+            "altitude_agl_m": float(row["altitude_agl_m"]),
+            "roll_deg": float(row["roll_deg"]),
+            "pitch_deg": float(row["pitch_deg"]),
+            "yaw_deg": float(row["yaw_deg"]),
+        })
 
         # Guardar fotograma intermedio para el dashboard durante la fase de viraje
         if sample_ground_frame is None or (row["sim_time_sec"] >= 20.0 and sample_ground_row["sim_time_sec"] < 20.0):
@@ -124,7 +160,11 @@ def render_all_camera_frames(
             sample_sky_frame = frame.copy()
             sample_sky_row = row
 
-    print("  [OK] Fotogramas generados y almacenados en data/camera_ground/ y data/camera_sky/")
+    manifest_path = os.path.join(data_dir, "semantic_dataset.csv")
+    pd.DataFrame(dataset_rows).to_csv(manifest_path, index=False)
+    print("  [OK] Fotogramas guardados en data/camera_ground/ y data/camera_sky/")
+    print(f"  [OK] Máscaras semánticas guardadas en {dir_ground_masks}/")
+    print(f"  [OK] Manifiesto del dataset guardado en: {manifest_path}")
 
     # 3. Generar Dashboard visual integrado
     if save_dashboard and sample_ground_frame is not None and sample_sky_frame is not None:

@@ -15,6 +15,7 @@ Archivos generados:
 -------------------
 1. data/reference_map.png: Imagen georreferenciada en formato RGB.
 2. data/reference_map_meta.json: Parámetros geodésicos y de escala del mapa.
+3. data/reference_map_labels.png: Máscara semántica; cada valor de píxel es una clase.
 """
 
 import os
@@ -24,6 +25,16 @@ import cv2
 
 # Parámetros geodésicos estándar WGS84
 METERS_PER_DEG_LAT = 111320.0
+
+# IDs de clase para segmentación semántica. 255 se reserva para píxeles ignorados.
+CLASS_IDS = {
+    "background": 0,
+    "vegetation_agriculture": 1,
+    "water": 2,
+    "road_runway": 3,
+    "buildings": 4,
+    "ignore": 255,
+}
 
 
 def lat_lon_to_meters(lat: float, lon: float, center_lat: float, center_lon: float) -> tuple[float, float]:
@@ -59,6 +70,8 @@ def create_synthetic_reference_map(
     np.random.seed(42)  # Reproducibilidad exacta
     base_color = np.array([130, 165, 140], dtype=np.uint8)  # BGR: tono verde olivo/pasto seco
     img = np.full((map_size_px, map_size_px, 3), base_color, dtype=np.uint8)
+    # El fondo del mapa sintético representa pastizal/vegetación.
+    labels = np.full((map_size_px, map_size_px), CLASS_IDS["vegetation_agriculture"], dtype=np.uint8)
 
     # Añadir variaciones tonales de terreno a gran escala
     noise = np.random.normal(0, 8, (map_size_px // 10, map_size_px // 10, 3))
@@ -99,8 +112,10 @@ def create_synthetic_reference_map(
     river_pts = np.array(river_pts, dtype=np.int32)
     # Ribera con vegetación (tono verde oscuro)
     cv2.polylines(img, [river_pts], False, (40, 80, 30), thickness=28)
+    cv2.polylines(labels, [river_pts], False, CLASS_IDS["vegetation_agriculture"], thickness=28)
     # Agua del río (azul-grisáceo)
     cv2.polylines(img, [river_pts], False, (140, 110, 60), thickness=16)
+    cv2.polylines(labels, [river_pts], False, CLASS_IDS["water"], thickness=16)
 
     # 3. Pista de aterrizaje aeronáutica (Aeródromo de prueba)
     rwy_center_x, rwy_center_y = 1350, 950
@@ -112,8 +127,10 @@ def create_synthetic_reference_map(
 
     # Asfalto de la pista
     cv2.drawContours(img, [box], 0, (65, 65, 65), -1)
+    cv2.drawContours(labels, [box], 0, CLASS_IDS["road_runway"], -1)
     # Borde de la pista
     cv2.drawContours(img, [box], 0, (90, 90, 90), 2)
+    cv2.drawContours(labels, [box], 0, CLASS_IDS["road_runway"], 2)
 
     # Línea central punteada blanca de la pista
     rad = np.radians(angle_deg)
@@ -122,33 +139,46 @@ def create_synthetic_reference_map(
         p1 = (int(rwy_center_x + dir_vec[0] * step), int(rwy_center_y + dir_vec[1] * step))
         p2 = (int(rwy_center_x + dir_vec[0] * (step + 20)), int(rwy_center_y + dir_vec[1] * (step + 20)))
         cv2.line(img, p1, p2, (230, 230, 230), 2)
+        cv2.line(labels, p1, p2, CLASS_IDS["road_runway"], 2)
 
     # 4. Red de carreteras principales y secundarias
     # Carretera Federal Este-Oeste (doble carril asfaltado)
     hwy_y = 1250
     cv2.line(img, (0, hwy_y), (map_size_px, hwy_y), (60, 60, 60), thickness=14)
+    cv2.line(labels, (0, hwy_y), (map_size_px, hwy_y), CLASS_IDS["road_runway"], thickness=14)
     cv2.line(img, (0, hwy_y), (map_size_px, hwy_y), (220, 220, 220), thickness=2)  # Línea central amarilla/blanca
+    cv2.line(labels, (0, hwy_y), (map_size_px, hwy_y), CLASS_IDS["road_runway"], thickness=2)
 
     # Carretera Norte-Sur con intersección y glorieta
     hwy_x = 1050
     cv2.line(img, (hwy_x, 0), (hwy_x, map_size_px), (60, 60, 60), thickness=12)
+    cv2.line(labels, (hwy_x, 0), (hwy_x, map_size_px), CLASS_IDS["road_runway"], thickness=12)
     cv2.line(img, (hwy_x, 0), (hwy_x, map_size_px), (220, 220, 220), thickness=1)
+    cv2.line(labels, (hwy_x, 0), (hwy_x, map_size_px), CLASS_IDS["road_runway"], thickness=1)
 
     # Glorieta en la intersección
     cv2.circle(img, (hwy_x, hwy_y), 32, (60, 60, 60), -1)
+    cv2.circle(labels, (hwy_x, hwy_y), 32, CLASS_IDS["road_runway"], -1)
     cv2.circle(img, (hwy_x, hwy_y), 16, (40, 110, 50), -1)  # Isla verde central
+    cv2.circle(labels, (hwy_x, hwy_y), 16, CLASS_IDS["vegetation_agriculture"], -1)
 
     # 5. Complejo de hangares y naves industriales (geometrías de alto contraste para matching visual)
     hangar_coords = [(1150, 850), (1220, 850), (1150, 930), (1220, 930)]
     for hx, hy in hangar_coords:
         # Techo de hangar metálico blanco/gris claro con sombra
         cv2.rectangle(img, (hx + 4, hy + 4), (hx + 45, hy + 35), (40, 40, 40), -1)  # Sombra
+        cv2.rectangle(labels, (hx + 4, hy + 4), (hx + 45, hy + 35), CLASS_IDS["buildings"], -1)
         cv2.rectangle(img, (hx, hy), (hx + 40, hy + 30), (210, 215, 220), -1)        # Techo
+        cv2.rectangle(labels, (hx, hy), (hx + 40, hy + 30), CLASS_IDS["buildings"], -1)
 
     # Guardar imagen PNG del mapa
     map_image_path = os.path.join(output_dir, "reference_map.png")
     cv2.imwrite(map_image_path, img)
     print(f"  [OK] Imagen del mapa guardada en: {map_image_path} ({os.path.getsize(map_image_path)/1024/1024:.2f} MB)")
+
+    labels_path = os.path.join(output_dir, "reference_map_labels.png")
+    cv2.imwrite(labels_path, labels)
+    print(f"  [OK] Máscara semántica guardada en: {labels_path}")
 
     # Calcular límites geodésicos WGS84
     meters_per_deg_lon = METERS_PER_DEG_LAT * np.cos(np.radians(center_lat))
@@ -160,6 +190,8 @@ def create_synthetic_reference_map(
 
     metadata = {
         "map_filename": "reference_map.png",
+        "labels_filename": "reference_map_labels.png",
+        "class_ids": CLASS_IDS,
         "format": "RGB",
         "width_px": map_size_px,
         "height_px": map_size_px,
