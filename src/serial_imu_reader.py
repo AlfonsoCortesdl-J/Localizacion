@@ -118,7 +118,7 @@ class STM32IMUReader:
             text = line.decode("utf-8", errors="ignore").strip()
             if text.startswith("{") and text.endswith("}"):
                 data = json.loads(text)
-                return {
+                packet = {
                     "timestamp_ms": data.get("t", 0),
                     "accel_x_mps2": float(data.get("ax", 0.0)),
                     "accel_y_mps2": float(data.get("ay", 0.0)),
@@ -127,6 +127,22 @@ class STM32IMUReader:
                     "gyro_q_rad_s": float(data.get("gy", 0.0)),
                     "gyro_r_rad_s": float(data.get("gz", 0.0)),
                 }
+                # Admite telemetría opcional para georreferenciar los fotogramas.
+                # El firmware MPU6050 compartido originalmente solo envía IMU,
+                # por lo que estos campos no aparecen hasta que se añada GPS/actitud.
+                optional_fields = {
+                    "latitude_deg": ("lat", "latitude_deg", "lat_geod_deg"),
+                    "longitude_deg": ("lon", "longitude_deg", "lon_geod_deg"),
+                    "altitude_agl_m": ("alt_agl_m", "altitude_agl_m"),
+                    "roll_deg": ("roll_deg",),
+                    "pitch_deg": ("pitch_deg",),
+                    "yaw_deg": ("yaw_deg",),
+                }
+                for output_key, aliases in optional_fields.items():
+                    value = next((data[key] for key in aliases if key in data), None)
+                    if value is not None:
+                        packet[output_key] = float(value)
+                return packet
         except Exception:
             pass
 
