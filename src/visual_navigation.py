@@ -22,6 +22,7 @@ Archivos generados:
 import os
 import sys
 import json
+import argparse
 import pandas as pd
 import numpy as np
 import cv2
@@ -127,8 +128,15 @@ class MapMatcher:
 
     def __init__(self, map_path: str, meta_path: str):
         self.map_img = cv2.imread(map_path)
+        if self.map_img is None:
+            raise FileNotFoundError(f"No se pudo leer el mapa de referencia: {map_path}")
         with open(meta_path, "r", encoding="utf-8") as f:
             self.meta = json.load(f)
+
+        required = ("width_px", "height_px", "gsd_m_per_px", "center_geodetic")
+        missing = [key for key in required if key not in self.meta]
+        if missing:
+            raise ValueError(f"Faltan campos en los metadatos del mapa {meta_path}: {missing}")
 
         self.gsd = self.meta["gsd_m_per_px"]
         self.center_lat = self.meta["center_geodetic"]["latitude_deg"]
@@ -377,8 +385,9 @@ def plot_visual_nav_trajectory(
 
     # Convertir mapa BGR a RGB
     map_rgb = cv2.cvtColor(matcher.map_img, cv2.COLOR_BGR2RGB)
-    half_span_m = matcher.meta["width_m"] / 2.0
-    extent = [-half_span_m, half_span_m, -half_span_m, half_span_m]
+    half_width_m = matcher.meta["width_m"] / 2.0
+    half_height_m = matcher.meta["height_m"] / 2.0
+    extent = [-half_width_m, half_width_m, -half_height_m, half_height_m]
 
     ax.imshow(map_rgb, extent=extent, origin="upper", alpha=0.88)
 
@@ -450,8 +459,22 @@ def plot_visual_nav_errors(
 
 
 if __name__ == "__main__":
-    csv_file = os.path.join(parent_dir, "data", "camera_ground_frames.csv")
-    frames_path = os.path.join(parent_dir, "data", "camera_ground")
-    map_file = os.path.join(parent_dir, "data", "reference_map.png")
-    meta_file = os.path.join(parent_dir, "data", "reference_map_meta.json")
-    run_visual_navigation(csv_file, frames_path, map_file, meta_file)
+    parser = argparse.ArgumentParser(description="Navegación visual y matching contra un mapa georreferenciado.")
+    parser.add_argument("--frames-csv", default=os.path.join(parent_dir, "data", "camera_ground_frames.csv"),
+                        help="CSV de fotogramas con tiempo, posición, actitud y nombre de imagen.")
+    parser.add_argument("--frames-dir", default=os.path.join(parent_dir, "data", "camera_ground"),
+                        help="Carpeta que contiene los fotogramas indicados en --frames-csv.")
+    parser.add_argument("--map", default=os.path.join(parent_dir, "data", "reference_map.png"),
+                        help="Mapa PNG; para ortomosaico real usa, por ejemplo, data/real_map/reference_map.png.")
+    parser.add_argument("--map-meta", default=os.path.join(parent_dir, "data", "reference_map_meta.json"),
+                        help="JSON geográfico correspondiente a --map.")
+    parser.add_argument("--map-match-interval", type=int, default=15,
+                        help="Aplicar matching de mapa cada N fotogramas.")
+    args = parser.parse_args()
+    run_visual_navigation(
+        args.frames_csv,
+        args.frames_dir,
+        args.map,
+        args.map_meta,
+        map_match_interval=args.map_match_interval,
+    )

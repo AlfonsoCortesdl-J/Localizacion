@@ -246,7 +246,7 @@ class ESP32IMUReader:
                 roll_deg, pitch_deg, yaw_deg = self.filter.update(ax, ay, az, gx, gy, gz, sim_time_sec)
                 self.packet_count += 1
 
-                return {
+                packet = {
                     "timestamp_ms": t_ms,
                     "sim_time_sec": round(sim_time_sec, 4),
                     "accel_x_mps2": ax,
@@ -259,6 +259,23 @@ class ESP32IMUReader:
                     "pitch_deg": round(pitch_deg, 2),
                     "yaw_deg": round(yaw_deg, 2),
                 }
+
+                # Telemetría opcional del firmware (GPS/actitud). Si el dispositivo
+                # las envía, tienen prioridad sobre la actitud del filtro interno.
+                optional_fields = {
+                    "latitude_deg": ("lat", "latitude_deg", "lat_geod_deg"),
+                    "longitude_deg": ("lon", "longitude_deg", "lon_geod_deg"),
+                    "altitude_agl_m": ("alt_agl_m", "altitude_agl_m"),
+                    "roll_deg": ("roll_deg",),
+                    "pitch_deg": ("pitch_deg",),
+                    "yaw_deg": ("yaw_deg",),
+                }
+                for output_key, aliases in optional_fields.items():
+                    value = next((data[key] for key in aliases if key in data), None)
+                    if value is not None:
+                        packet[output_key] = round(float(value), 4)
+
+                return packet
         except Exception:
             pass
 
