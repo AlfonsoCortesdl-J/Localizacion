@@ -453,8 +453,21 @@ def plot_fusion_errors(df_fused: pd.DataFrame, rmse_fused: float, plots_dir: str
 
 
 if __name__ == "__main__":
-    imu_f = os.path.join(parent_dir, "data", "imu_measurements.csv")
+    import argparse
+    parser = argparse.ArgumentParser(description="Filtro EKF para fusion sensorial INS/Vision")
+    parser.add_argument("--physical", action="store_true", help="Usar log de IMU fisica grabado desde ESP32 (physical_imu_log.csv)")
+    parser.add_argument("--imu", type=str, default=None, help="Ruta personalizada del archivo CSV de IMU")
+    args = parser.parse_args()
+
+    default_imu = "physical_imu_log.csv" if args.physical else "imu_measurements.csv"
+    imu_f = args.imu if args.imu else os.path.join(parent_dir, "data", default_imu)
     vis_f = os.path.join(parent_dir, "data", "visual_navigation_results.csv")
     flight_f = os.path.join(parent_dir, "data", "flight_log.csv")
     meta_f = os.path.join(parent_dir, "data", "reference_map_meta.json")
+
+    if not os.path.exists(imu_f):
+        print(f"[ERROR] Archivo no encontrado: {imu_f}")
+        sys.exit(1)
+
+    print(f"Ejecutando fusion EKF con IMU: {imu_f}")
     run_sensor_fusion(imu_f, vis_f, flight_f, meta_f)

@@ -137,8 +137,13 @@ def imprimir_resumen(tiempos: list[float]) -> None:
     print("    - data/fused_navigation_log.csv")
     print("    - plots/presentacion.png   <-- Panel resumen para diapositivas")
     print("")
-    print("  Para ver la simulacion animada en vivo con mapa e instrumentos:")
+    print("  Para ver la simulacion animada en 2D (OpenCV):")
     print("    python src/live_simulation.py")
+    print("")
+    print("  Para la nueva REPRESENTACION 3D INTERACTIVA (Three.js / WebGL):")
+    print("    python src/viewer_3d.py             <-- Vuelo 3D completo")
+    print("    python src/viewer_3d.py --imu auto  <-- Con ESP32 en vivo")
+    print("    python src/viewer_3d.py --imu sim   <-- Modo de prueba emulado")
     print(linea_borde)
 
 
