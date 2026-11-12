@@ -1,0 +1,1814 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>TecMM · Navegación Aérea en Tiempo Real</title>
+<style>
+  :root{
+    --bg:#070b12; --panel:rgba(12,19,31,.86); --panel2:rgba(16,26,42,.92);
+    --line:rgba(90,180,230,.20); --cyan:#38d9ff; --green:#3df0a0; --lime:#b6ff5c;
+    --amber:#ffc857; --red:#ff5d73; --violet:#b48cff; --text:#dce9f7; --muted:#7f97b3;
+    --shadow:0 18px 60px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    background:radial-gradient(1200px 800px at 20% 0%,#0d1b2d 0%,var(--bg) 60%);
+    color:var(--text);font-family:"Segoe UI",Roboto,Helvetica,Arial,sans-serif;overflow:hidden;
+  }
+  #three-canvas{position:fixed;inset:0;width:100%;height:100%;display:block;outline:none}
+  .glass{background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(14px);box-shadow:var(--shadow)}
+  /* ---------- TOP BAR ---------- */
+  #topbar{
+    position:fixed;top:0;left:0;right:0;height:58px;display:flex;align-items:center;gap:18px;
+    padding:0 18px;z-index:60;background:linear-gradient(180deg,rgba(5,10,18,.94),rgba(5,10,18,.55));
+    border-bottom:1px solid var(--line);
+  }
+  .brand{display:flex;align-items:center;gap:10px;min-width:250px}
+  .brand-mark{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,var(--cyan),#1976ff);
+    display:grid;place-items:center;font-weight:900;color:#04121f;box-shadow:0 0 24px rgba(56,217,255,.35)}
+  .brand h1{font-size:14px;letter-spacing:.10em;text-transform:uppercase;font-weight:700}
+  .brand p{font-size:10px;color:var(--muted);letter-spacing:.14em;text-transform:uppercase}
+  .mission-tabs{display:flex;gap:6px;padding:4px;border-radius:12px;background:rgba(0,0,0,.28);border:1px solid var(--line)}
+  .mission-tab{
+    border:0;background:transparent;color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.06em;
+    padding:8px 13px;border-radius:9px;cursor:pointer;text-transform:uppercase;transition:.18s;
+  }
+  .mission-tab:hover{color:var(--text)}
+  .mission-tab.active{background:linear-gradient(135deg,rgba(56,217,255,.24),rgba(25,118,255,.18));color:#fff;
+    box-shadow:inset 0 0 0 1px rgba(56,217,255,.35)}
+  .top-spacer{flex:1}
+  .top-field{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted)}
+  select,input[type=text],input[type=number]{
+    background:rgba(6,13,23,.85);border:1px solid var(--line);color:var(--text);border-radius:8px;
+    padding:7px 9px;font-size:11px;outline:none;font-family:inherit;
+  }
+  select:focus,input:focus{border-color:rgba(56,217,255,.55)}
+  .conn{display:flex;align-items:center;gap:7px;font-size:11px;font-weight:700;letter-spacing:.08em;
+    padding:7px 11px;border-radius:999px;border:1px solid var(--line);background:rgba(0,0,0,.3)}
+  .conn .dot{width:8px;height:8px;border-radius:50%;background:var(--red);box-shadow:0 0 10px currentColor}
+  .conn.ok .dot{background:var(--green)}
+  .conn.warn .dot{background:var(--amber)}
+  #clock{font-variant-numeric:tabular-nums;font-size:12px;color:var(--cyan);letter-spacing:.08em}
+  /* ---------- RIGHT DOCK ---------- */
+  #dock{
+    position:fixed;top:58px;right:0;bottom:0;width:352px;z-index:55;overflow-y:auto;
+    padding:12px 12px 26px;display:flex;flex-direction:column;gap:10px;
+    background:linear-gradient(180deg,rgba(7,12,20,.55),rgba(7,12,20,.90));border-left:1px solid var(--line);
+  }
+  #dock::-webkit-scrollbar{width:6px}
+  #dock::-webkit-scrollbar-thumb{background:rgba(56,217,255,.22);border-radius:99px}
+  .card{border-radius:14px;padding:12px}
+  .card h2{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);margin-bottom:9px;
+    display:flex;align-items:center;justify-content:space-between;font-weight:800}
+  .card h2 .hint{color:var(--muted);font-weight:500;letter-spacing:.04em;text-transform:none;font-size:10px}
+  .tele-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+  .tele{background:rgba(4,10,18,.55);border:1px solid rgba(90,180,230,.12);border-radius:9px;padding:7px 9px}
+  .tele .k{font-size:9px;letter-spacing:.10em;text-transform:uppercase;color:var(--muted)}
+  .tele .v{font-size:15px;font-weight:750;font-variant-numeric:tabular-nums;color:#fff;margin-top:2px}
+  .tele .v small{font-size:9px;color:var(--muted);font-weight:600;margin-left:3px}
+  .tele.wide{grid-column:1/-1}
+  .badge{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;font-size:9px;
+    font-weight:800;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--line)}
+  .badge.ok{color:var(--green);border-color:rgba(61,240,160,.35);background:rgba(61,240,160,.08)}
+  .badge.bad{color:var(--red);border-color:rgba(255,93,115,.35);background:rgba(255,93,115,.08)}
+  .badge.warn{color:var(--amber);border-color:rgba(255,200,87,.35);background:rgba(255,200,87,.08)}
+  .badge.info{color:var(--cyan);border-color:rgba(56,217,255,.35);background:rgba(56,217,255,.08)}
+  /* CAMERAS */
+  .cam-grid{display:grid;grid-template-columns:1fr;gap:8px}
+  .cam{position:relative;border-radius:10px;overflow:hidden;background:#03070d;border:1px solid rgba(90,180,230,.18);cursor:pointer}
+  .cam img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;background:#03070d}
+  .cam .cam-label{position:absolute;left:7px;top:7px;font-size:9px;font-weight:800;letter-spacing:.10em;
+    padding:4px 7px;border-radius:6px;background:rgba(0,0,0,.65);border:1px solid rgba(56,217,255,.30);color:var(--cyan)}
+  .cam .cam-sub{position:absolute;right:7px;top:7px;font-size:8px;color:var(--muted);background:rgba(0,0,0,.6);
+    padding:3px 6px;border-radius:5px}
+  .cam .scan{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(56,217,255,.045) 0 1px,transparent 1px 4px)}
+  .cam-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  /* CONTROLS */
+  .btn{
+    border:1px solid var(--line);background:rgba(9,17,29,.9);color:var(--text);border-radius:9px;
+    padding:8px 10px;font-size:11px;font-weight:700;cursor:pointer;transition:.16s;font-family:inherit;
+  }
+  .btn:hover{border-color:rgba(56,217,255,.55);background:rgba(56,217,255,.10)}
+  .btn.primary{background:linear-gradient(135deg,rgba(56,217,255,.24),rgba(25,118,255,.22));border-color:rgba(56,217,255,.45);color:#fff}
+  .btn.danger{background:rgba(255,93,115,.12);border-color:rgba(255,93,115,.40);color:#ffd7dd}
+  .btn.good{background:rgba(61,240,160,.12);border-color:rgba(61,240,160,.40);color:#d7ffee}
+  .btn.sm{padding:6px 8px;font-size:10px}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .row{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+  .row + .row{margin-top:7px}
+  .slider{display:flex;align-items:center;gap:9px;width:100%;font-size:10px;color:var(--muted)}
+  input[type=range]{flex:1;accent-color:var(--cyan)}
+  .chk{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--muted);cursor:pointer}
+  .chk input{accent-color:var(--cyan)}
+  /* FORM */
+  .form-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+  .form-grid label{display:flex;flex-direction:column;gap:2px;font-size:8px;letter-spacing:.05em;color:var(--muted);text-transform:uppercase}
+  .form-grid input{padding:4px 5px;font-size:10px}
+  details.proto{margin-top:6px}
+  details.proto summary{cursor:pointer;font-size:9px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;
+    list-style:none;display:flex;align-items:center;gap:5px}
+  details.proto summary::-webkit-details-marker{display:none}
+  details.proto summary::before{content:'▸';color:var(--cyan);font-size:10px}
+  details.proto[open] summary::before{content:'▾'}
+  details.proto .code{margin-top:5px}
+  .code{font-family:Consolas,monospace;font-size:9px;line-height:1.55;color:#9fc7e8;background:rgba(2,7,13,.75);
+    border:1px solid rgba(90,180,230,.14);border-radius:8px;padding:8px;overflow-x:auto;white-space:pre}
+  /* ---------- BOTTOM LEFT: CHARTS ---------- */
+  #charts{
+    position:fixed;left:14px;bottom:14px;width:420px;max-width:calc(100vw - 392px);z-index:50;
+    border-radius:14px;padding:7px 9px 6px;
+  }
+  #charts .chart-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+  #charts .chart-head span{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);font-weight:800}
+  #charts .chart-head .legend{display:flex;gap:8px;font-size:8px;color:var(--muted)}
+  .legend i{display:inline-block;width:7px;height:7px;border-radius:2px;margin-right:3px}
+  .chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+  .chart-box{background:rgba(3,8,15,.55);border:1px solid rgba(90,180,230,.10);border-radius:7px;padding:3px 4px}
+  .chart-box canvas{display:block;width:100%;height:62px}
+  /* ---------- BOTTOM RIGHT: PFD + MINIMAP ---------- */
+  #instruments{
+    position:fixed;right:366px;bottom:14px;z-index:50;display:flex;gap:10px;align-items:flex-end;
+  }
+  .inst-card{border-radius:14px;padding:8px}
+  .inst-card canvas{display:block;border-radius:9px;background:#02060c}
+  .inst-card .inst-title{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);
+    font-weight:800;margin:0 0 5px 2px}
+  /* ---------- MODAL ---------- */
+  #modal{position:fixed;inset:0;z-index:100;display:none;place-items:center;background:rgba(0,0,0,.78);backdrop-filter:blur(6px)}
+  #modal.open{display:grid}
+  #modal .modal-inner{width:min(1100px,92vw);border-radius:16px;padding:12px;position:relative}
+  #modal img{width:100%;max-height:78vh;object-fit:contain;border-radius:10px;background:#000}
+  #modal .modal-close{position:absolute;right:18px;top:18px;z-index:2}
+  /* ---------- TOAST ---------- */
+  #toast{position:fixed;left:50%;top:76px;transform:translateX(-50%) translateY(-20px);z-index:120;
+    padding:10px 16px;border-radius:10px;background:rgba(8,16,28,.96);border:1px solid rgba(56,217,255,.4);
+    color:#fff;font-size:12px;opacity:0;pointer-events:none;transition:.25s;box-shadow:var(--shadow)}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  /* ---------- MISSION HUD (top-left overlay) ---------- */
+  #mission-hud{position:fixed;left:14px;top:72px;z-index:50;padding:10px 13px;border-radius:13px;max-width:330px}
+  #mission-hud .mh-title{font-size:11px;font-weight:800;letter-spacing:.08em;color:#fff}
+  #mission-hud .mh-sub{font-size:10px;color:var(--muted);margin-top:3px;line-height:1.45}
+  #mission-hud .mh-metrics{display:flex;gap:12px;margin-top:8px}
+  #mission-hud .mh-metrics div{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+  #mission-hud .mh-metrics b{display:block;font-size:13px;color:var(--cyan);font-variant-numeric:tabular-nums}
+  #gps-alert{position:fixed;left:50%;top:74px;transform:translateX(-50%);z-index:80;display:none;
+    padding:8px 18px;border-radius:999px;background:rgba(255,93,115,.16);border:1px solid rgba(255,93,115,.55);
+    color:#ffd7dd;font-size:11px;font-weight:800;letter-spacing:.10em;text-transform:uppercase;
+    animation:pulse 1.1s infinite alternate}
+  #gps-alert.show{display:block}
+  @keyframes pulse{from{box-shadow:0 0 0 0 rgba(255,93,115,.35)}to{box-shadow:0 0 0 10px rgba(255,93,115,0)}}
+  @media (max-width:1180px){
+    #charts{width:calc(100vw - 392px)}
+    #instruments{display:none}
+  }
+  @media (max-width:860px){
+    #dock{width:300px}
+    #charts{display:none}
+    .mission-tabs{display:none}
+    .brand{min-width:auto}
+    .brand p{display:none}
+  }
+</style>
+</head>
+<body>
+<canvas id="three-canvas"></canvas>
+
+<!-- ================= TOP BAR ================= -->
+<header id="topbar">
+  <div class="brand">
+    <div class="brand-mark">✈</div>
+    <div>
+      <h1>TecMM · Navegación Aérea</h1>
+      <p>Visión · IMU · EKF · Tiempo real</p>
+    </div>
+  </div>
+  <div class="mission-tabs" id="mission-tabs">
+    <button class="mission-tab" data-mission="cessna">Cessna 172</button>
+    <button class="mission-tab active" data-mission="campus">Campus Zapopan</button>
+    <button class="mission-tab" data-mission="hardware">Hardware</button>
+  </div>
+  <div class="top-spacer"></div>
+  <div class="top-field">
+    <span>Fuente</span>
+    <select id="source-select">
+      <option value="sim">Simulación Cessna</option>
+      <option value="campus" selected>Misión campus</option>
+      <option value="serial">IMU serie</option>
+      <option value="live">Telemetría HTTP/UDP</option>
+      <option value="replay">Reproducir sesión</option>
+    </select>
+  </div>
+  <div class="conn" id="conn-badge"><span class="dot"></span><span id="conn-text">CONECTANDO</span></div>
+  <div id="clock">--:--:--</div>
+</header>
+
+<!-- ================= MISSION HUD ================= -->
+<div id="mission-hud" class="glass">
+  <div class="mh-title" id="mh-title">Inspección autónoma · TecMM Zapopan</div>
+  <div class="mh-sub" id="mh-sub">Dron cuadricóptero · corredor sin GPS · VIO + EKF</div>
+  <div class="mh-metrics">
+    <div>RMSE EKF<b id="mh-ekf">--</b></div>
+    <div>RMSE INS<b id="mh-ins">--</b></div>
+    <div>Tiempo<b id="mh-time">--</b></div>
+  </div>
+</div>
+<div id="gps-alert">⚠ GPS DENEGADO · navegación inercial / VIO</div>
+
+<!-- ================= RIGHT DOCK ================= -->
+<aside id="dock">
+  <section class="card glass">
+    <h2>Vehículo <span class="hint" id="veh-kind">DRON</span></h2>
+    <div class="tele-grid">
+      <div class="tele"><div class="k">Altitud MSL</div><div class="v"><span id="v-alt">--</span><small>m</small></div></div>
+      <div class="tele"><div class="k">Altitud AGL</div><div class="v"><span id="v-agl">--</span><small>m</small></div></div>
+      <div class="tele"><div class="k">Velocidad</div><div class="v"><span id="v-speed">--</span><small>m/s</small></div></div>
+      <div class="tele"><div class="k">Rumbo</div><div class="v"><span id="v-hdg">--</span><small>°</small></div></div>
+      <div class="tele"><div class="k">Alabeo</div><div class="v"><span id="v-roll">--</span><small>°</small></div></div>
+      <div class="tele"><div class="k">Cabeceo</div><div class="v"><span id="v-pitch">--</span><small>°</small></div></div>
+      <div class="tele wide"><div class="k">Posición local (x, z) · Lat / Lon</div>
+        <div class="v" style="font-size:11px"><span id="v-pos">--</span></div>
+        <div class="v" style="font-size:10px;color:var(--muted)"><span id="v-geo">--</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card glass">
+    <h2>Navegación <span class="hint" id="nav-mode">EKF + VIO</span></h2>
+    <div class="row" style="justify-content:space-between">
+      <span class="badge info" id="badge-source">CAMPUS</span>
+      <span class="badge ok" id="badge-gps">GPS LOCK</span>
+      <span class="badge ok" id="badge-vio">VIO OK</span>
+      <span class="badge info" id="badge-rec" style="display:none">REC</span>
+    </div>
+    <div class="tele-grid" style="margin-top:8px">
+      <div class="tele"><div class="k">Error EKF</div><div class="v" style="color:var(--green)"><span id="v-err-ekf">--</span><small>m</small></div></div>
+      <div class="tele"><div class="k">Deriva INS</div><div class="v" style="color:var(--red)"><span id="v-err-ins">--</span><small>m</small></div></div>
+      <div class="tele"><div class="k">Cota 3σ</div><div class="v" style="color:var(--amber)"><span id="v-sigma">--</span><small>m</small></div></div>
+      <div class="tele"><div class="k">Error rumbo</div><div class="v"><span id="v-err-yaw">--</span><small>°</small></div></div>
+      <div class="tele"><div class="k">Satélites</div><div class="v"><span id="v-sats">--</span></div></div>
+      <div class="tele"><div class="k">Batería</div><div class="v"><span id="v-batt">--</span><small>%</small></div></div>
+    </div>
+  </section>
+
+  <section class="card glass">
+    <h2>Cámaras en vivo <span class="hint">click para ampliar</span></h2>
+    <div class="cam-grid">
+      <div class="cam" data-cam="nadir">
+        <img id="cam-nadir" alt="Cámara nadir"/>
+        <div class="scan"></div>
+        <div class="cam-label">NADIR · VIRTUAL</div>
+        <div class="cam-sub" id="cam-nadir-sub">5 FPS</div>
+      </div>
+      <div class="cam" data-cam="sky">
+        <img id="cam-sky" alt="Cámara cenital"/>
+        <div class="scan"></div>
+        <div class="cam-label">CENITAL · STAR TRACKER</div>
+        <div class="cam-sub" id="cam-sky-sub">2 FPS</div>
+      </div>
+      <div class="cam" data-cam="real">
+        <img id="cam-real" alt="Cámara real"/>
+        <div class="scan"></div>
+        <div class="cam-label">REAL · ESP32-CAM / WEBCAM</div>
+        <div class="cam-sub" id="cam-real-sub">SIN SEÑAL</div>
+      </div>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <input type="text" id="cam-url" placeholder="http://192.168.4.1:81/stream o índice 0" style="flex:1;min-width:0"/>
+      <button class="btn sm primary" id="cam-apply">Aplicar</button>
+    </div>
+    <div class="row">
+      <button class="btn sm" data-cam-preset="0">Webcam 0</button>
+      <button class="btn sm" data-cam-preset="1">Webcam 1</button>
+      <button class="btn sm" data-cam-preset="http://192.168.4.1:81/stream">ESP32-CAM</button>
+    </div>
+  </section>
+
+  <section class="card glass">
+    <h2>Control de misión</h2>
+    <div class="row">
+      <button class="btn primary" id="btn-play">⏸ Pausar</button>
+      <button class="btn" id="btn-reset">⟲ Reiniciar</button>
+      <button class="btn good" id="btn-record">● Grabar</button>
+    </div>
+    <div class="row">
+      <div class="slider"><span>Velocidad</span><input type="range" id="speed" min="0.25" max="4" step="0.25" value="1"/><b id="speed-val">1.0×</b></div>
+    </div>
+    <div class="row">
+      <span class="chk"><input type="checkbox" id="chk-gt" checked/> GT</span>
+      <span class="chk"><input type="checkbox" id="chk-ekf" checked/> EKF</span>
+      <span class="chk"><input type="checkbox" id="chk-ins" checked/> INS</span>
+      <span class="chk"><input type="checkbox" id="chk-vo"/> VO</span>
+      <span class="chk"><input type="checkbox" id="chk-vision"/> Visión</span>
+    </div>
+    <div class="row">
+      <span style="font-size:10px;color:var(--muted)">Cámara 3D</span>
+      <button class="btn sm" data-view="orbit">Órbita</button>
+      <button class="btn sm" data-view="chase">Persecución</button>
+      <button class="btn sm" data-view="cockpit">Cabina</button>
+      <button class="btn sm" data-view="top">Cenital</button>
+    </div>
+  </section>
+
+  <section class="card glass">
+    <h2>Ingesta de telemetría <span class="hint">HTTP / UDP</span></h2>
+    <div class="form-grid">
+      <label>ax m/s²<input type="number" step="0.01" id="f-ax" value="0"/></label>
+      <label>ay m/s²<input type="number" step="0.01" id="f-ay" value="0"/></label>
+      <label>az m/s²<input type="number" step="0.01" id="f-az" value="-9.81"/></label>
+      <label>gx rad/s<input type="number" step="0.001" id="f-gx" value="0"/></label>
+      <label>gy rad/s<input type="number" step="0.001" id="f-gy" value="0"/></label>
+      <label>gz rad/s<input type="number" step="0.001" id="f-gz" value="0"/></label>
+      <label>roll °<input type="number" step="0.1" id="f-roll" value="0"/></label>
+      <label>pitch °<input type="number" step="0.1" id="f-pitch" value="0"/></label>
+      <label>yaw °<input type="number" step="0.1" id="f-yaw" value="0"/></label>
+      <label>lat °<input type="number" step="0.000001" id="f-lat" value=""/></label>
+      <label>lon °<input type="number" step="0.000001" id="f-lon" value=""/></label>
+      <label>alt m<input type="number" step="0.1" id="f-alt" value=""/></label>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button class="btn primary" id="btn-send">Enviar muestra</button>
+      <button class="btn" id="btn-zero">Cero / calibrar</button>
+      <button class="btn" id="btn-live">Modo live</button>
+    </div>
+    <details class="proto">
+      <summary>Protocolo HTTP / UDP</summary>
+      <div class="code" id="ingest-help">POST /api/telemetry
+{"ax":0.1,"ay":0.0,"az":-9.8,"gx":0.0,"gy":0.0,"gz":0.02,
+ "roll_deg":2.0,"pitch_deg":1.0,"yaw_deg":45.0,
+ "lat":20.7034,"lon":-103.4747,"alt_agl_m":35.0}
+UDP 9876 · mismo JSON por datagrama</div>
+    </details>
+  </section>
+</aside>
+
+<!-- ================= CHARTS ================= -->
+<div id="charts" class="glass">
+  <div class="chart-head">
+    <span>Telemetría en vivo</span>
+    <div class="legend">
+      <span><i style="background:#3df0a0"></i>EKF</span>
+      <span><i style="background:#ff5d73"></i>INS</span>
+      <span><i style="background:#ffc857"></i>3σ</span>
+    </div>
+  </div>
+  <div class="chart-grid">
+    <div class="chart-box"><canvas id="chart-errors"></canvas></div>
+    <div class="chart-box"><canvas id="chart-alt"></canvas></div>
+    <div class="chart-box"><canvas id="chart-speed"></canvas></div>
+    <div class="chart-box"><canvas id="chart-att"></canvas></div>
+  </div>
+</div>
+
+<!-- ================= PFD + MINIMAP ================= -->
+<div id="instruments">
+  <div class="inst-card glass">
+    <div class="inst-title">PFD</div>
+    <canvas id="pfd" width="230" height="230"></canvas>
+  </div>
+  <div class="inst-card glass">
+    <div class="inst-title">Mapa táctico</div>
+    <canvas id="minimap" width="230" height="230"></canvas>
+  </div>
+</div>
+
+<!-- ================= MODAL ================= -->
+<div id="modal">
+  <div class="modal-inner glass">
+    <button class="btn modal-close" id="modal-close">Cerrar ✕</button>
+    <img id="modal-img" alt="Cámara ampliada"/>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script src="/web/three.min.js"></script>
+<script src="/web/OrbitControls.js"></script>
+<script src="/web/GLTFLoader.js"></script>
+<script>
+/* =========================================================================
+   ESTADO GLOBAL
+   ========================================================================= */
+const App = {
+  config:null, sceneData:null, missionData:null, state:null,
+  missionId:'campus', sourceId:'campus', viewMode:'orbit',
+  ws:null, wsRetries:0, connected:false, pollingTimer:null,
+  history:[], lastHistoryT:-1, chartsDirty:false, lastChartDraw:0,
+  trails:{}, show:{gt:true,ekf:true,ins:true,vo:false,vision:false},
+  sceneMission:null, campusGroup:null, cessnaGroup:null,
+  vehicleRoot:null, cessnaModel:null, droneModel:null, rotors:[],
+  cameraTarget:new THREE.Vector3(0,0,0), cameraPos:new THREE.Vector3(220,180,260),
+  clock:null, renderer:null, scene:null, camera:null, controls:null,
+  labelSprites:[], missionPath:null, campusBounds:{minX:-430,maxX:430,minZ:-430,maxZ:430},
+  cessnaBounds:{minX:-2200,maxX:700,minZ:-1800,maxZ:900},
+  lastFrameAt:0, gpsDenied:false, toastTimer:null, sceneLock:0
+};
+
+const $ = id => document.getElementById(id);
+const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
+const fmt = (v,d=1) => (v===undefined||v===null||Number.isNaN(Number(v))) ? '--' : Number(v).toFixed(d);
+const rad = d => d*Math.PI/180;
+const deg = r => r*180/Math.PI;
+
+/* =========================================================================
+   THREE.JS · ESCENA BASE
+   ========================================================================= */
+function initThree(){
+  const canvas = $('three-canvas');
+  App.renderer = new THREE.WebGLRenderer({canvas, antialias:true, powerPreference:'high-performance', logarithmicDepthBuffer:true});
+  App.renderer.setPixelRatio(Math.min(2, window.devicePixelRatio||1));
+  App.renderer.setSize(window.innerWidth, window.innerHeight);
+  App.renderer.shadowMap.enabled = true;
+  App.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  App.renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+  App.scene = new THREE.Scene();
+  App.scene.background = new THREE.Color(0x060d17);
+  App.scene.fog = new THREE.FogExp2(0x0a1524, 0.00016);
+
+  App.camera = new THREE.PerspectiveCamera(48, window.innerWidth/window.innerHeight, 0.5, 40000);
+  App.camera.position.copy(App.cameraPos);
+
+  App.controls = new THREE.OrbitControls(App.camera, App.renderer.domElement);
+  App.controls.enableDamping = true;
+  App.controls.dampingFactor = 0.07;
+  App.controls.maxPolarAngle = Math.PI*0.495;
+  App.controls.minDistance = 8;
+  App.controls.maxDistance = 6000;
+  App.controls.target.set(0,0,0);
+
+  const hemi = new THREE.HemisphereLight(0xbfe8ff, 0x1a2638, 0.95);
+  App.scene.add(hemi);
+  const sun = new THREE.DirectionalLight(0xfff2d0, 1.35);
+  sun.position.set(1200, 2200, 900);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048,2048);
+  sun.shadow.camera.left = -900; sun.shadow.camera.right = 900;
+  sun.shadow.camera.top = 900; sun.shadow.camera.bottom = -900;
+  sun.shadow.camera.near = 10; sun.shadow.camera.far = 6000;
+  App.scene.add(sun);
+  const fill = new THREE.DirectionalLight(0x6aa8ff, 0.35);
+  fill.position.set(-800, 600, -900);
+  App.scene.add(fill);
+
+  // Grupos de escena y vehículo
+  App.campusGroup = new THREE.Group();
+  App.cessnaGroup = new THREE.Group();
+  App.scene.add(App.campusGroup, App.cessnaGroup);
+  App.cessnaGroup.visible = false;
+
+  App.vehicleRoot = new THREE.Group();
+  App.vehicleRoot.rotation.order = 'YXZ';
+  App.scene.add(App.vehicleRoot);
+
+  App.clock = new THREE.Clock();
+  window.addEventListener('resize', onResize);
+  animate();
+}
+
+function onResize(){
+  App.camera.aspect = window.innerWidth/window.innerHeight;
+  App.camera.updateProjectionMatrix();
+  App.renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+function animate(){
+  requestAnimationFrame(animate);
+  const dt = Math.min(0.1, App.clock.getDelta());
+  if(App.viewMode !== 'orbit') updateCameraMode(dt);
+  else App.controls.update();
+
+  // Rotores del dron
+  App.rotors.forEach((r,i)=>{ r.rotation.y += dt * (22 + i*3); });
+
+  // Animación de etiquetas (siempre de cara a cámara es automático en Sprite)
+  App.renderer.render(App.scene, App.camera);
+}
+
+/* =========================================================================
+   UTILIDADES DE ESCENA
+   ========================================================================= */
+function clearGroup(group){
+  while(group.children.length){
+    const child = group.children.pop();
+    child.traverse?.(obj=>{
+      if(obj.geometry) obj.geometry.dispose?.();
+      if(obj.material){
+        if(Array.isArray(obj.material)) obj.material.forEach(m=>{ m.map?.dispose?.(); m.dispose?.(); });
+        else { obj.material.map?.dispose?.(); obj.material.dispose?.(); }
+      }
+    });
+  }
+}
+
+function makeTextSprite(text, opts={}){
+  const color = opts.color || '#dce9f7';
+  const bg = opts.bg || 'rgba(7,14,24,.86)';
+  const border = opts.border || 'rgba(56,217,255,.45)';
+  const canvas = document.createElement('canvas');
+  canvas.width = 512; canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,512,128);
+  ctx.fillStyle = bg;
+  roundRect(ctx, 8, 20, 496, 88, 18); ctx.fill();
+  ctx.strokeStyle = border; ctx.lineWidth = 4; roundRect(ctx, 8, 20, 496, 88, 18); ctx.stroke();
+  ctx.fillStyle = color;
+  ctx.font = '700 40px "Segoe UI", Arial';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, 256, 64, 460);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const mat = new THREE.SpriteMaterial({map:tex, transparent:true, depthTest:true});
+  const sprite = new THREE.Sprite(mat);
+  sprite.scale.set(opts.scale||54, (opts.scale||54)/4, 1);
+  return sprite;
+}
+
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath();
+}
+
+function polygonShape(points){
+  const shape = new THREE.Shape();
+  points.forEach((p,i)=>{
+    const x = p[0], y = -p[1];
+    if(i===0) shape.moveTo(x,y); else shape.lineTo(x,y);
+  });
+  shape.closePath();
+  return shape;
+}
+
+function flatPolygon(points, color, y=0.05, opacity=0.9){
+  const geo = new THREE.ShapeGeometry(polygonShape(points));
+  geo.rotateX(-Math.PI/2);
+  const mat = new THREE.MeshStandardMaterial({color, transparent:opacity<1, opacity, roughness:0.92, metalness:0.0, side:THREE.DoubleSide});
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.y = y;
+  mesh.receiveShadow = true;
+  return mesh;
+}
+
+function ribbonGeometry(points, width, y=0.08){
+  const positions = [];
+  const half = width/2;
+  for(let i=0;i<points.length-1;i++){
+    const [x0,z0] = points[i], [x1,z1] = points[i+1];
+    let dx = x1-x0, dz = z1-z0;
+    const len = Math.hypot(dx,dz);
+    if(len < 1e-6) continue;
+    dx/=len; dz/=len;
+    const px = -dz*half, pz = dx*half;
+    const a=[x0+px,y,z0+pz], b=[x0-px,y,z0-pz], c=[x1+px,y,z1+pz], d=[x1-px,y,z1-pz];
+    positions.push(...a,...b,...c, ...b,...d,...c);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions,3));
+  geo.computeVertexNormals();
+  return geo;
+}
+
+/* -------------------------------------------------------------------------
+   DISEÑO DE EDIFICIOS
+   ------------------------------------------------------------------------- */
+let _facadeTexCache = null;
+function makeFacadeTexture(){
+  if(_facadeTexCache) return _facadeTexCache;
+  const c = document.createElement('canvas');
+  c.width = 128; c.height = 128;
+  const g = c.getContext('2d');
+  g.fillStyle = '#ffffff';
+  g.fillRect(0,0,128,128);
+  for(let fy=0; fy<128; fy+=32){
+    // Losa entre pisos
+    g.fillStyle = 'rgba(30,42,58,0.12)';
+    g.fillRect(0, fy, 128, 2);
+    for(let fx=4; fx<128; fx+=32){
+      const grd = g.createLinearGradient(0, fy+7, 0, fy+28);
+      grd.addColorStop(0, '#24455f');
+      grd.addColorStop(0.42, '#8fc4e8');
+      grd.addColorStop(0.62, '#6ea6c9');
+      grd.addColorStop(1, '#16303f');
+      g.fillStyle = grd;
+      g.fillRect(fx, fy+7, 22, 21);
+      g.strokeStyle = 'rgba(255,255,255,0.55)';
+      g.lineWidth = 1;
+      g.strokeRect(fx+0.5, fy+7.5, 21, 20);
+      // Parteluz y reflejo
+      g.strokeStyle = 'rgba(12,24,34,0.55)';
+      g.beginPath(); g.moveTo(fx+11, fy+7); g.lineTo(fx+11, fy+28); g.stroke();
+      g.strokeStyle = 'rgba(255,255,255,0.22)';
+      g.beginPath(); g.moveTo(fx+3, fy+26); g.lineTo(fx+19, fy+10); g.stroke();
+    }
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.anisotropy = 4;
+  _facadeTexCache = tex;
+  return tex;
+}
+
+function addFacadePlanes(group, polygon, centroid, height, baseTex, tint){
+  const H = height - 1.4;
+  if(H < 2.2 || !polygon || polygon.length < 3) return;
+  const windowH = Math.min(H, height - 1.0);
+  const n = polygon.length;
+  for(let i=0;i<n;i++){
+    const a = polygon[i], b = polygon[(i+1)%n];
+    const dx = b[0]-a[0], dz = b[1]-a[1];
+    const len = Math.hypot(dx,dz);
+    if(len < 4.5) continue;
+    let nx = -dz/len, nz = dx/len;
+    const mx = (a[0]+b[0])/2, mz = (a[1]+b[1])/2;
+    if((mx-centroid[0])*nx + (mz-centroid[1])*nz < 0){ nx = -nx; nz = -nz; }
+    const t = baseTex.clone();
+    t.needsUpdate = true;
+    t.repeat.set(Math.max(1, Math.round(len/3.3)), Math.max(1, Math.round(windowH/3.2)));
+    const mat = new THREE.MeshStandardMaterial({
+      map:t, color:tint, roughness:0.42, metalness:0.22,
+      emissive:0x0d2233, emissiveIntensity:0.35
+    });
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(len-0.4, windowH), mat);
+    plane.position.set(mx + nx*0.10, 0.7 + windowH/2, mz + nz*0.10);
+    plane.rotation.y = Math.atan2(nx, nz);
+    plane.receiveShadow = true;
+    group.add(plane);
+  }
+}
+
+function addRoofDetails(group, b, h, pal, idx){
+  const c = b.centroid || [0,0];
+  const area = Number(b.area_m2 || 0);
+  const name = (b.name || '').toLowerCase();
+
+  // Domo geodésico para el Domo Universitario
+  if(name.includes('domo')){
+    const radius = Math.max(8, Math.min(18, Math.sqrt(Math.max(area, 300)) * 0.42));
+    const dome = new THREE.Mesh(
+      new THREE.SphereGeometry(radius, 32, 18, 0, Math.PI*2, 0, Math.PI/2),
+      new THREE.MeshStandardMaterial({color:0xdbe3ec, roughness:0.35, metalness:0.35, side:THREE.DoubleSide})
+    );
+    dome.position.set(c[0], h, c[1]);
+    dome.castShadow = true;
+    group.add(dome);
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(radius, 0.35, 8, 48),
+      new THREE.MeshStandardMaterial({color:0x9fb0c2, metalness:0.6, roughness:0.3})
+    );
+    ring.rotation.x = Math.PI/2;
+    ring.position.set(c[0], h+0.4, c[1]);
+    group.add(ring);
+    return;
+  }
+
+  // Caseta de escaleras / acceso a azotea
+  const boxMat = new THREE.MeshStandardMaterial({color:pal.trim, roughness:0.85, metalness:0.05});
+  const unitMat = new THREE.MeshStandardMaterial({color:0x9aa5b2, roughness:0.7, metalness:0.25});
+  const rnd = (k)=> (Math.sin(idx*12.9898 + k*78.233)*43758.5453) % 1;
+
+  if(area > 420){
+    const w = Math.min(9, Math.max(3.5, Math.sqrt(area)*0.10));
+    const d = w * 0.8;
+    const hh = 2.4 + Math.abs(rnd(1))*0.9;
+    const casa = new THREE.Mesh(new THREE.BoxGeometry(w, hh, d), boxMat);
+    casa.position.set(c[0] + rnd(2)*Math.sqrt(area)*0.10, h + hh/2, c[1] + rnd(3)*Math.sqrt(area)*0.10);
+    casa.castShadow = true;
+    group.add(casa);
+  }
+
+  // Equipos de azotea (unidades HVAC)
+  if(area > 650){
+    const count = area > 1000 ? 3 : 2;
+    for(let k=0;k<count;k++){
+      const s = 1.8 + Math.abs(rnd(10+k))*1.6;
+      const unit = new THREE.Mesh(new THREE.BoxGeometry(s, 1.1, s*0.8), unitMat);
+      const ang = rnd(20+k) * Math.PI*2;
+      const rad = Math.sqrt(area) * (0.18 + Math.abs(rnd(30+k))*0.16);
+      unit.position.set(c[0] + Math.cos(ang)*rad, h + 0.55, c[1] + Math.sin(ang)*rad);
+      unit.castShadow = true;
+      group.add(unit);
+    }
+  }
+
+  // Faros de azotea (pequeños puntos emisivos)
+  if(area > 800){
+    const lampMat = new THREE.MeshBasicMaterial({color:0xffd27a});
+    for(const [ox,oz] of [[-1,-1],[1,-1],[1,1],[-1,1]]){
+      const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.28, 8, 8), lampMat);
+      const rad = Math.sqrt(area) * 0.32;
+      lamp.position.set(c[0] + ox*rad*0.7, h + 0.4, c[1] + oz*rad*0.7);
+      group.add(lamp);
+    }
+  }
+}
+
+/* =========================================================================
+   ESCENA CAMPUS
+   ========================================================================= */
+async function buildCampusScene(data){
+  clearGroup(App.campusGroup);
+  App.labelSprites = [];
+  const meta = data.meta || {};
+  const W = Number(meta.width_m || 858.7), H = Number(meta.height_m || 853.3);
+  App.campusBounds = {minX:-W/2, maxX:W/2, minZ:-H/2, maxZ:H/2};
+
+  // Terreno satelital
+  const tex = await loadTexture(meta.image || '/data/tecmm_campus_map.png');
+  tex.anisotropy = App.renderer.capabilities.getMaxAnisotropy();
+  const groundGeo = new THREE.PlaneGeometry(W,H,1,1);
+  groundGeo.rotateX(-Math.PI/2);
+  const groundMat = new THREE.MeshStandardMaterial({map:tex, roughness:0.95, metalness:0.0});
+  const ground = new THREE.Mesh(groundGeo, groundMat);
+  ground.receiveShadow = true;
+  App.campusGroup.add(ground);
+
+  // Rejilla sutil
+  const grid = new THREE.GridHelper(Math.max(W,H), 40, 0x1b3a52, 0x102335);
+  grid.position.y = 0.03;
+  grid.material.transparent = true; grid.material.opacity = 0.35;
+  App.campusGroup.add(grid);
+
+  // Áreas verdes, estacionamientos, canchas
+  (data.greens||[]).forEach(g=> App.campusGroup.add(flatPolygon(g.polygon, 0x1d4a2e, 0.06, 0.55)));
+  (data.parking||[]).forEach(p=> App.campusGroup.add(flatPolygon(p.polygon, 0x252b33, 0.07, 0.75)));
+  (data.pitches||[]).forEach(p=>{
+    const mesh = flatPolygon(p.polygon, 0x1f5c3a, 0.09, 0.95);
+    App.campusGroup.add(mesh);
+    const border = new THREE.LineLoop(
+      new THREE.BufferGeometry().setFromPoints(p.polygon.map(pt=>new THREE.Vector3(pt[0],0.12,-pt[1]))),
+      new THREE.LineBasicMaterial({color:0xd8f5e6, transparent:true, opacity:0.55})
+    );
+    App.campusGroup.add(border);
+  });
+
+  // Vialidades
+  (data.roads||[]).forEach(r=>{
+    if(!r.points || r.points.length<2) return;
+    const width = Number(r.width_m||3);
+    const geo = ribbonGeometry(r.points, width, 0.08);
+    const mat = new THREE.MeshStandardMaterial({
+      color: r.type==='service'?0x2c323a:0x20262e,
+      roughness:0.95, metalness:0.0, transparent:true, opacity:0.82
+    });
+    App.campusGroup.add(new THREE.Mesh(geo,mat));
+  });
+
+  // Edificios con diseño arquitectónico (fachadas, ventanas, pretiles, azotea)
+  const palette = [
+    {wall:0xe6eaf0, roof:0x8f9aa7, trim:0xb9c2cd},
+    {wall:0xdfe5ec, roof:0x7d8896, trim:0xacb6c2},
+    {wall:0xeceff4, roof:0x99a3b0, trim:0xc3cbd5},
+    {wall:0xd7dee7, roof:0x74808e, trim:0xa6b0bd},
+    {wall:0xe9edf2, roof:0x939dab, trim:0xbdc6d1},
+    {wall:0xdde3ea, roof:0x808b99, trim:0xb0bac6}
+  ];
+  const facadeTex = makeFacadeTexture();
+  (data.buildings||[]).forEach((b,idx)=>{
+    const h = Math.max(3.4, Number(b.height_m||9));
+    const pal = palette[idx % palette.length];
+    const shape = polygonShape(b.polygon);
+    const geo = new THREE.ExtrudeGeometry(shape,{depth:h, bevelEnabled:false, steps:1});
+    geo.rotateX(-Math.PI/2);
+    const roofMat = new THREE.MeshStandardMaterial({color:pal.roof, roughness:0.88, metalness:0.06});
+    const wallMat = new THREE.MeshStandardMaterial({color:pal.wall, roughness:0.78, metalness:0.04});
+    // ExtrudeGeometry: grupo 0 = tapas (azotea), grupo 1 = muros laterales.
+    const mesh = new THREE.Mesh(geo,[roofMat,wallMat]);
+    mesh.castShadow = true; mesh.receiveShadow = true;
+    App.campusGroup.add(mesh);
+
+    // Pretil (borde elevado de la azotea)
+    const rimGeo = new THREE.ExtrudeGeometry(shape,{depth:0.55, bevelEnabled:false, steps:1});
+    rimGeo.rotateX(-Math.PI/2);
+    const rim = new THREE.Mesh(rimGeo, new THREE.MeshStandardMaterial({color:pal.trim, roughness:0.8, metalness:0.05}));
+    rim.position.y = h;
+    rim.castShadow = true;
+    App.campusGroup.add(rim);
+
+    // Fachadas con ventanas
+    addFacadePlanes(App.campusGroup, b.polygon, b.centroid || [0,0], h, facadeTex, pal.wall);
+
+    // Aristas suaves
+    const edges = new THREE.EdgesGeometry(geo, 32);
+    const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({color:0x0b1622, transparent:true, opacity:0.35}));
+    App.campusGroup.add(line);
+
+    // Detalles de azotea: caseta de escaleras, equipos y domo
+    addRoofDetails(App.campusGroup, b, h, pal, idx);
+
+    // Etiqueta para edificios con nombre
+    const name = (b.name||'').trim();
+    if(name && name !== 'Edificio' && name !== '?' && idx < 22){
+      const sprite = makeTextSprite(shortName(name), {color:'#e8f4ff', border:'rgba(56,217,255,.55)', scale:46});
+      const c = b.centroid || [0,0];
+      sprite.position.set(c[0], h + 16, -c[1]);
+      App.campusGroup.add(sprite);
+      App.labelSprites.push(sprite);
+    }
+  });
+
+  // Árboles instanciados
+  buildTrees(data.trees||[]);
+
+  // Puntos de interés
+  (data.pois||[]).forEach(p=>{
+    const sprite = makeTextSprite(p.name, {color:'#b6ff5c', border:'rgba(182,255,92,.5)', scale:42});
+    sprite.position.set(p.x, 24, -p.z);
+    App.campusGroup.add(sprite);
+  });
+
+  // Ruta planificada de la misión
+  try{
+    const mission = await fetchJSON('/api/mission?name=campus');
+    App.missionData = mission;
+    if(mission.waypoints && mission.waypoints.length){
+      const pts = mission.waypoints.map(w=>new THREE.Vector3(w.x, 2, -w.z));
+      const geo = new THREE.BufferGeometry().setFromPoints(pts);
+      const line = new THREE.Line(geo, new THREE.LineDashedMaterial({color:0x38d9ff, dashSize:14, gapSize:10, transparent:true, opacity:0.55}));
+      line.computeLineDistances();
+      App.campusGroup.add(line);
+      App.missionPath = pts;
+    }
+    $('mh-title').textContent = mission.name || 'Inspección autónoma · TecMM Zapopan';
+    $('mh-ekf').textContent = fmt(mission.metrics?.ekf_rmse_m,2)+' m';
+    $('mh-ins').textContent = fmt(mission.metrics?.ins_rmse_m,2)+' m';
+    $('mh-sub').textContent = `Recorrido ${fmt(mission.metrics?.path_length_m,0)} m · ventana sin GPS ${fmt(mission.gps_denied?.[0]?.[0],0)}–${fmt(mission.gps_denied?.[0]?.[1],0)} s`;
+  }catch(e){ /* la misión es opcional */ }
+
+  // Cámara inicial del campus
+  if(App.viewMode==='orbit'){
+    App.camera.position.set(420, 380, 560);
+    App.controls.target.set(0,0,0);
+    App.controls.update();
+  }
+}
+
+function shortName(name){
+  const map = {
+    'Instituto Tecnológico José Mario Molina Pasquel y Henríquez — Campus Zapopan':'TecMM Zapopan',
+    'Posgrado TECMM':'Posgrado', 'Ing Sistemas':'Ing. Sistemas', 'Ing Electronica':'Ing. Electrónica',
+    'Ing Electromecanica':'Ing. Electromecánica', 'Organo int. de control':'Órgano de Control',
+    'Domo Universitario':'Domo', 'Edificio nuevo':'Edificio Nuevo', 'Basicas':'Ciencias Básicas'
+  };
+  return map[name] || name.replace('TECMM','').trim();
+}
+
+function buildTrees(trees){
+  if(!trees.length) return;
+  const trunkGeo = new THREE.CylinderGeometry(0.5,0.8,4,5);
+  const trunkMat = new THREE.MeshStandardMaterial({color:0x4a3320, roughness:1});
+  const crownGeo = new THREE.ConeGeometry(1,1,7);
+  const crownMat = new THREE.MeshStandardMaterial({color:0x1f6b3a, roughness:0.95});
+  const trunks = new THREE.InstancedMesh(trunkGeo, trunkMat, trees.length);
+  const crowns = new THREE.InstancedMesh(crownGeo, crownMat, trees.length);
+  const dummy = new THREE.Object3D();
+  trees.forEach((t,i)=>{
+    const [x,z,r,h] = t;
+    dummy.position.set(x, 2, -z); dummy.scale.set(1,1,1); dummy.updateMatrix();
+    trunks.setMatrixAt(i, dummy.matrix);
+    dummy.position.set(x, 4 + h*0.5, -z);
+    dummy.scale.set(r, h, r); dummy.updateMatrix();
+    crowns.setMatrixAt(i, dummy.matrix);
+  });
+  trunks.castShadow = true; crowns.castShadow = true;
+  App.campusGroup.add(trunks, crowns);
+}
+
+/* =========================================================================
+   ESCENA CESSNA
+   ========================================================================= */
+async function buildCessnaScene(data){
+  clearGroup(App.cessnaGroup);
+  App.labelSprites = [];
+  const W = Number(data.width_m||8000), H = Number(data.height_m||8000);
+  const tex = await loadTexture(data.map || '/data/reference_map.png');
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = App.renderer.capabilities.getMaxAnisotropy();
+  const geo = new THREE.PlaneGeometry(W,H,1,1);
+  geo.rotateX(-Math.PI/2);
+  const mat = new THREE.MeshStandardMaterial({map:tex, roughness:0.96, metalness:0.0});
+  const ground = new THREE.Mesh(geo,mat);
+  ground.receiveShadow = true;
+  App.cessnaGroup.add(ground);
+
+  // Rejilla tenue de referencia métrica
+  const grid = new THREE.GridHelper(Math.max(W,H), 80, 0x2a4a63, 0x183044);
+  grid.position.y = 0.05;
+  grid.material.transparent = true; grid.material.opacity = 0.16;
+  App.cessnaGroup.add(grid);
+
+  const offset = Number(data.alt_offset_m ?? 380);
+  const start = data.start || [0,0,500];
+  const heading = Number(data.start_heading ?? 90);
+  const path = data.path || [];
+
+  // Ruta planificada del circuito (línea discontinua + proyección en el terreno)
+  if(path.length > 1){
+    const pts = path.map(p=>new THREE.Vector3(p[0], (p[2]||0)-offset, p[1]));
+    const line = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints(pts),
+      new THREE.LineDashedMaterial({color:0x38d9ff, dashSize:55, gapSize:38, transparent:true, opacity:0.55})
+    );
+    line.computeLineDistances();
+    App.cessnaGroup.add(line);
+    const shadow = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints(pts.map(p=>new THREE.Vector3(p.x, 2.0, p.z))),
+      new THREE.LineBasicMaterial({color:0x38d9ff, transparent:true, opacity:0.22})
+    );
+    App.cessnaGroup.add(shadow);
+  }
+
+  // Pista de aterrizaje en el punto real de despegue
+  const rwGroup = new THREE.Group();
+  rwGroup.position.set(start[0], 0.55, start[1]);
+  rwGroup.rotation.y = -rad(heading);
+  const rwGeo = new THREE.PlaneGeometry(42, 900);
+  rwGeo.rotateX(-Math.PI/2);
+  const runway = new THREE.Mesh(rwGeo, new THREE.MeshStandardMaterial({color:0x32373d, roughness:0.95}));
+  rwGroup.add(runway);
+  const thrMat = new THREE.MeshBasicMaterial({color:0xe8eef7});
+  for(let i=-4;i<=4;i++){
+    const stripe = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 26), thrMat);
+    stripe.rotation.x = -Math.PI/2;
+    stripe.position.set(0, 0.2, i*92);
+    rwGroup.add(stripe);
+  }
+  for(const s of [-1,1]){
+    const edge = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 900), thrMat);
+    edge.rotation.x = -Math.PI/2;
+    edge.position.set(s*20, 0.2, 0);
+    rwGroup.add(edge);
+  }
+  App.cessnaGroup.add(rwGroup);
+
+  // Puertas del circuito alineadas con la trayectoria real
+  const gateMat = new THREE.MeshBasicMaterial({color:0x38d9ff, transparent:true, opacity:0.55, side:THREE.DoubleSide});
+  const gateRingMat = new THREE.MeshBasicMaterial({color:0xb6ff5c, transparent:true, opacity:0.30, side:THREE.DoubleSide});
+  (data.gates||[]).forEach(g=>{
+    const y = (g.alt||0) - offset;
+    const torus = new THREE.Mesh(new THREE.TorusGeometry(46, 1.9, 8, 44), gateMat);
+    torus.position.set(g.x, y, g.z);
+    torus.rotation.y = -rad(g.yaw||0);
+    App.cessnaGroup.add(torus);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(46, 0.6, 6, 44), gateRingMat);
+    ring.position.copy(torus.position);
+    ring.rotation.copy(torus.rotation);
+    ring.scale.setScalar(1.10);
+    App.cessnaGroup.add(ring);
+  });
+
+  App.cessnaBounds = data.bounds || {minX:-2200,maxX:700,minZ:-1800,maxZ:900};
+  if(App.viewMode==='orbit'){
+    const b = App.cessnaBounds;
+    const cx=(b.minX+b.maxX)/2, cz=(b.minZ+b.maxZ)/2;
+    const span = Math.max(b.maxX-b.minX, b.maxZ-b.minZ, 900);
+    App.controls.target.set(cx, 240, cz);
+    App.camera.position.set(cx + span*0.55, span*0.62, cz + span*0.80);
+    App.controls.update();
+  }
+}
+
+async function loadTexture(url){
+  return new Promise((resolve,reject)=>{
+    new THREE.TextureLoader().load(url, resolve, undefined, reject);
+  });
+}
+
+/* =========================================================================
+   MODELOS DE VEHÍCULO
+   ========================================================================= */
+function buildDroneModel(){
+  const g = new THREE.Group();
+  const bodyMat = new THREE.MeshStandardMaterial({color:0x17202b, roughness:0.45, metalness:0.55});
+  const accentMat = new THREE.MeshStandardMaterial({color:0x38d9ff, emissive:0x0a6a86, emissiveIntensity:0.9, roughness:0.3, metalness:0.4});
+  const body = new THREE.Mesh(new THREE.BoxGeometry(3.2,0.9,2.0), bodyMat);
+  body.castShadow = true; g.add(body);
+  const canopy = new THREE.Mesh(new THREE.SphereGeometry(0.75,16,10,0,Math.PI*2,0,Math.PI/2), accentMat);
+  canopy.position.set(0,0.55,0.15); canopy.scale.set(1,0.8,1.3); g.add(canopy);
+
+  const armGeo = new THREE.CylinderGeometry(0.13,0.13,3.2,8);
+  const rotorGeo = new THREE.CylinderGeometry(1.35,1.35,0.06,24);
+  const rotorMat = new THREE.MeshStandardMaterial({color:0x9fb3c8, transparent:true, opacity:0.42, metalness:0.6, roughness:0.3});
+  const armPositions = [[1.25,0,1.25],[-1.25,0,1.25],[1.25,0,-1.25],[-1.25,0,-1.25]];
+  armPositions.forEach(([x,_,z],i)=>{
+    const arm = new THREE.Mesh(armGeo, bodyMat);
+    arm.position.set(x/2,0,z/2);
+    arm.rotation.z = Math.PI/2;
+    arm.rotation.y = Math.atan2(z,x);
+    g.add(arm);
+    const rotor = new THREE.Mesh(rotorGeo, rotorMat);
+    rotor.position.set(x,0.22,z);
+    g.add(rotor);
+    App.rotors.push(rotor);
+    const led = new THREE.Mesh(new THREE.SphereGeometry(0.16,8,8), new THREE.MeshBasicMaterial({color:i<2?0x3df0a0:0xff5d73}));
+    led.position.set(x,0.05,z); g.add(led);
+  });
+  // Cámara/gimbal
+  const gimbal = new THREE.Mesh(new THREE.SphereGeometry(0.38,14,10), new THREE.MeshStandardMaterial({color:0x0b0f14, roughness:0.3, metalness:0.7}));
+  gimbal.position.set(0,-0.55,0.55); g.add(gimbal);
+  const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.2,0.25,12), new THREE.MeshStandardMaterial({color:0x1a2638, metalness:0.8, roughness:0.2}));
+  lens.rotation.x = Math.PI/2; lens.position.set(0,-0.55,0.9); g.add(lens);
+  return g;
+}
+
+function buildCessnaModel(){
+  const g = new THREE.Group();
+  const loader = new THREE.GLTFLoader();
+  loader.load('/web/c172.glb', gltf=>{
+    const model = gltf.scene;
+    // El GLB tiene la nariz en -X; se alinea con -Z (frente de la escena).
+    model.rotation.y = -Math.PI/2;
+    model.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; } });
+    g.add(model);
+    App.cessnaModel = model;
+  }, undefined, err=>{
+    console.warn('No se pudo cargar c172.glb; se usa un modelo simple.', err);
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.2,1.1,7.5), new THREE.MeshStandardMaterial({color:0xd8e2ee, roughness:0.5, metalness:0.2}));
+    const wing = new THREE.Mesh(new THREE.BoxGeometry(11,0.18,1.8), new THREE.MeshStandardMaterial({color:0xb7c6d8, roughness:0.6}));
+    wing.position.set(0,0.25,-0.4);
+    const tail = new THREE.Mesh(new THREE.BoxGeometry(0.18,1.8,2.2), new THREE.MeshStandardMaterial({color:0xb7c6d8}));
+    tail.position.set(0,0.6,3.1);
+    g.add(body,wing,tail);
+    App.cessnaModel = g;
+  });
+  return g;
+}
+
+/* =========================================================================
+   TRAYECTORIAS
+   ========================================================================= */
+function createTrail(color, maxPoints=2600){
+  const positions = new Float32Array(maxPoints*3);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions,3).setUsage(THREE.DynamicDrawUsage));
+  geo.setDrawRange(0,0);
+  const mat = new THREE.LineBasicMaterial({color, transparent:true, opacity:0.95});
+  const line = new THREE.Line(geo, mat);
+  line.frustumCulled = false;
+  App.scene.add(line);
+  return {line, geo, positions, count:0, maxPoints, last:null};
+}
+
+function initTrails(){
+  Object.values(App.trails).forEach(t=>{ App.scene.remove(t.line); t.geo.dispose(); t.line.material.dispose(); });
+  App.trails = {
+    gt: createTrail(0x38d9ff),
+    ekf: createTrail(0x3df0a0),
+    ins: createTrail(0xff5d73),
+    vo: createTrail(0xffc857),
+    vision: createTrail(0xb48cff)
+  };
+  applyTrailVisibility();
+}
+
+function clearTrails(){
+  Object.values(App.trails).forEach(t=>{ t.count=0; t.last=null; t.geo.setDrawRange(0,0); });
+}
+
+function updateTrail(name, x, y, z){
+  const t = App.trails[name];
+  if(!t) return;
+  if(t.last && Math.hypot(x-t.last[0], y-t.last[1], z-t.last[2]) < 0.6) return;
+  if(t.count >= t.maxPoints){
+    // Desplazar una posición para mantener la ventana.
+    t.positions.copyWithin(0, 3);
+    t.count = t.maxPoints-1;
+  }
+  const i = t.count*3;
+  t.positions[i]=x; t.positions[i+1]=y; t.positions[i+2]=z;
+  t.count++;
+  t.geo.attributes.position.needsUpdate = true;
+  t.geo.setDrawRange(0, t.count);
+  t.last = [x,y,z];
+}
+
+function applyTrailVisibility(){
+  const map = {gt:'chk-gt',ekf:'chk-ekf',ins:'chk-ins',vo:'chk-vo',vision:'chk-vision'};
+  Object.entries(map).forEach(([name,id])=>{
+    const chk = $(id);
+    if(chk && App.trails[name]) App.trails[name].line.visible = chk.checked;
+  });
+}
+
+/* =========================================================================
+   APLICAR ESTADO
+   ========================================================================= */
+function applyState(data){
+  if(!data || !data.vehicle) return;
+  App.state = data;
+  App.lastFrameAt = performance.now();
+  const v = data.vehicle;
+  const isCessna = data.mission === 'cessna';
+
+  // Cambio automático de escena si el hub cambia de misión (con bloqueo tras un cambio manual).
+  if(App.sceneMission && data.mission && data.mission !== App.sceneMission && data.mission !== 'hardware' && performance.now() > App.sceneLock){
+    switchSceneForMission(data.mission, false);
+  }
+
+  // Posición y actitud
+  App.vehicleRoot.position.set(v.x||0, v.y||0, v.z||0);
+  App.vehicleRoot.rotation.x = rad(v.pitch||0);
+  App.vehicleRoot.rotation.y = -rad(v.yaw||0);
+  App.vehicleRoot.rotation.z = -rad(v.roll||0);
+  if(App.cessnaModel) App.cessnaModel.visible = isCessna;
+  if(App.droneModel) App.droneModel.visible = !isCessna;
+
+  // Trayectorias
+  const e = data.estimates || {};
+  if(e.gt) updateTrail('gt', e.gt.x, e.gt.y, e.gt.z);
+  if(e.fused) updateTrail('ekf', e.fused.x, e.fused.y, e.fused.z);
+  if(e.ins) updateTrail('ins', e.ins.x, e.ins.y, e.ins.z);
+  if(e.vo) updateTrail('vo', e.vo.x, e.vo.y, e.vo.z);
+  if(e.vision) updateTrail('vision', e.vision.x, e.vision.y, e.vision.z);
+
+  // HUD
+  updateHUD(data);
+  pushHistory(data);
+  drawPFD(data);
+  drawMinimap(data);
+  maybeDrawCharts(true);
+}
+
+function updateHUD(d){
+  const v = d.vehicle, h = d.health||{}, er = d.errors||{}, est = d.estimates||{};
+  $('v-alt').textContent = fmt(v.alt_m,0);
+  $('v-agl').textContent = fmt(v.agl_m,0);
+  $('v-speed').textContent = fmt(v.speed,1);
+  $('v-hdg').textContent = fmt(v.heading,0);
+  $('v-roll').textContent = fmt(v.roll,1);
+  $('v-pitch').textContent = fmt(v.pitch,1);
+  $('v-pos').textContent = `${fmt(v.x,0)} E · ${fmt(v.z,0)} S`;
+  $('v-geo').textContent = (v.lat!==null && v.lon!==null) ? `${fmt(v.lat,6)}, ${fmt(v.lon,6)}` : 'sin GPS';
+  $('v-err-ekf').textContent = fmt(er.fused_pos_m,2);
+  $('v-err-ins').textContent = fmt(er.ins_pos_m,1);
+  $('v-sigma').textContent = fmt(est.fused?.sigma_m,1);
+  $('v-err-yaw').textContent = fmt(er.fused_yaw_deg,2);
+  $('v-sats').textContent = h.sats ?? '--';
+  $('v-batt').textContent = fmt(h.battery,0);
+  $('veh-kind').textContent = d.mission==='cessna' ? 'AVIÓN' : (d.mission==='hardware'?'HARDWARE':'DRON');
+  $('nav-mode').textContent = d.mission==='cessna' ? 'EKF + VO/TRN' : 'VIO + EKF';
+  $('badge-source').textContent = (d.source||'--').toUpperCase();
+  const gps = !!h.gps;
+  App.gpsDenied = !gps;
+  $('badge-gps').textContent = gps ? 'GPS LOCK' : 'GPS DENEGADO';
+  $('badge-gps').className = 'badge ' + (gps?'ok':'bad');
+  $('badge-vio').textContent = d.mission==='campus' ? 'VIO OK' : (gps?'VISIÓN OK':'VIO ACTIVO');
+  $('badge-vio').className = 'badge ' + (gps?'ok':'warn');
+  $('gps-alert').classList.toggle('show', !gps && d.mission!=='cessna');
+  $('mh-time').textContent = fmt(d.sim_time,1)+' s';
+}
+
+function pushHistory(d){
+  const t = Number(d.sim_time||0);
+  if(App.history.length && t < App.history[App.history.length-1].t - 0.5) App.history = [];
+  const er = d.errors||{}, est = d.estimates||{}, v = d.vehicle||{};
+  App.history.push({
+    t,
+    err_fused: Number(er.fused_pos_m||0),
+    err_ins: Number(er.ins_pos_m||0),
+    sigma: Number(est.fused?.sigma_m||0),
+    alt: Number(v.alt_m||0),
+    agl: Number(v.agl_m||0),
+    speed: Number(v.speed||0),
+    roll: Number(v.roll||0),
+    pitch: Number(v.pitch||0),
+    yaw: Number(v.yaw||0)
+  });
+  if(App.history.length > 1400) App.history.splice(0, App.history.length-1400);
+}
+
+/* =========================================================================
+   GRÁFICAS
+   ========================================================================= */
+function maybeDrawCharts(force){
+  const now = performance.now();
+  if(!force && now - App.lastChartDraw < 120) return;
+  App.lastChartDraw = now;
+  drawLineChart('chart-errors', [
+    {key:'err_fused', color:'#3df0a0', width:2},
+    {key:'err_ins', color:'#ff5d73', width:1.5},
+    {key:'sigma', color:'#ffc857', width:1, dash:[5,4]}
+  ], {min:0, title:'Error de posición (m)'});
+  drawLineChart('chart-alt', [
+    {key:'alt', color:'#38d9ff', width:2},
+    {key:'agl', color:'#3df0a0', width:1.5}
+  ], {min:0, title:'Altitud (m)'});
+  drawLineChart('chart-speed', [
+    {key:'speed', color:'#b6ff5c', width:2}
+  ], {min:0, title:'Velocidad (m/s)'});
+  drawLineChart('chart-att', [
+    {key:'roll', color:'#38d9ff', width:1.5},
+    {key:'pitch', color:'#ffc857', width:1.5},
+    {key:'yaw', color:'#b48cff', width:1}
+  ], {min:-180, max:180, title:'Actitud (°)'});
+}
+
+function drawLineChart(id, series, opts={}){
+  const canvas = $(id);
+  if(!canvas) return;
+  const dpr = Math.min(2, window.devicePixelRatio||1);
+  const w = canvas.clientWidth||260, h = canvas.clientHeight||92;
+  if(canvas.width !== Math.round(w*dpr) || canvas.height !== Math.round(h*dpr)){
+    canvas.width = Math.round(w*dpr); canvas.height = Math.round(h*dpr);
+  }
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,w,h);
+
+  const data = App.history;
+  if(!data.length){
+    ctx.fillStyle='rgba(127,151,179,.55)'; ctx.font='10px Segoe UI'; ctx.textAlign='center';
+    ctx.fillText('esperando telemetría…', w/2, h/2);
+    return;
+  }
+  const tEnd = data[data.length-1].t;
+  const tStart = Math.max(data[0].t, tEnd - 60);
+  const windowData = data.filter(d=>d.t>=tStart);
+  let yMin = opts.min !== undefined ? opts.min : Infinity;
+  let yMax = opts.max !== undefined ? opts.max : -Infinity;
+  if(opts.min === undefined || opts.max === undefined){
+    windowData.forEach(d=>{
+      series.forEach(s=>{
+        const v = d[s.key];
+        if(Number.isFinite(v)){ yMin=Math.min(yMin,v); yMax=Math.max(yMax,v); }
+      });
+    });
+    if(!Number.isFinite(yMin) || !Number.isFinite(yMax)){ yMin=0; yMax=1; }
+    const pad = Math.max(0.5,(yMax-yMin)*0.12);
+    yMin -= pad; yMax += pad;
+    if(opts.min !== undefined) yMin = opts.min;
+    if(opts.max !== undefined) yMax = opts.max;
+  }
+  if(yMax - yMin < 1e-6) yMax = yMin+1;
+
+  const left=6, right=6, top=13, bottom=4;
+  const px = t => left + (t-tStart)/Math.max(1e-6,tEnd-tStart)*(w-left-right);
+  const py = v => top + (1-(v-yMin)/(yMax-yMin))*(h-top-bottom);
+
+  // Rejilla
+  ctx.strokeStyle='rgba(90,180,230,.12)'; ctx.lineWidth=1;
+  for(let i=0;i<=3;i++){
+    const y = top + i*(h-top-bottom)/3;
+    ctx.beginPath(); ctx.moveTo(left,y); ctx.lineTo(w-right,y); ctx.stroke();
+  }
+  ctx.fillStyle='rgba(127,151,179,.65)'; ctx.font='8px Segoe UI'; ctx.textAlign='left';
+  ctx.fillText(fmt(yMax,0), left+1, top-3);
+  ctx.fillText(fmt(yMin,0), left+1, h-1);
+  ctx.textAlign='right'; ctx.fillStyle='rgba(56,217,255,.55)'; ctx.font='8px Segoe UI';
+  ctx.fillText(opts.title||'', w-right, 9);
+
+  series.forEach(s=>{
+    ctx.beginPath();
+    ctx.strokeStyle = s.color; ctx.lineWidth = s.width||1.5;
+    ctx.setLineDash(s.dash||[]);
+    let started=false;
+    windowData.forEach(d=>{
+      const v = d[s.key];
+      if(!Number.isFinite(v)) return;
+      const X=px(d.t), Y=py(v);
+      if(!started){ ctx.moveTo(X,Y); started=true; } else ctx.lineTo(X,Y);
+    });
+    ctx.stroke(); ctx.setLineDash([]);
+  });
+
+  // Valor actual
+  const last = windowData[windowData.length-1];
+  if(last && series.length){
+    const s = series[0];
+    ctx.fillStyle=s.color; ctx.font='700 10px Segoe UI'; ctx.textAlign='right';
+    ctx.fillText(fmt(last[s.key],2), w-right, top+11);
+  }
+}
+
+/* =========================================================================
+   PFD
+   ========================================================================= */
+function drawPFD(d){
+  const canvas = $('pfd'); if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W=canvas.width, H=canvas.height, cx=W/2, cy=H/2;
+  const v = d.vehicle||{};
+  const roll = Number(v.roll||0), pitch = Number(v.pitch||0), yaw = Number(v.yaw||0);
+  ctx.clearRect(0,0,W,H);
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx,cy,Math.min(W,H)/2-2,0,Math.PI*2); ctx.clip();
+  ctx.fillStyle='#0b4f7a'; ctx.fillRect(0,0,W,H);
+  ctx.save();
+  ctx.translate(cx,cy);
+  ctx.rotate(-rad(roll));
+  const pitchPx = clamp(pitch*3.2,-90,90);
+  ctx.translate(0,pitchPx);
+  // Cielo / tierra
+  const gradSky = ctx.createLinearGradient(0,-H,0,0);
+  gradSky.addColorStop(0,'#0a3d63'); gradSky.addColorStop(1,'#1f7fb5');
+  ctx.fillStyle=gradSky; ctx.fillRect(-W,-H,W*2,H);
+  const gradGnd = ctx.createLinearGradient(0,0,0,H);
+  gradGnd.addColorStop(0,'#7a4a1f'); gradGnd.addColorStop(1,'#3d2410');
+  ctx.fillStyle=gradGnd; ctx.fillRect(-W,0,W*2,H);
+  ctx.strokeStyle='#e8f4ff'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(-W,0); ctx.lineTo(W,0); ctx.stroke();
+  // Escala de cabeceo
+  ctx.strokeStyle='rgba(232,244,255,.75)'; ctx.fillStyle='rgba(232,244,255,.75)';
+  ctx.font='9px Consolas'; ctx.textAlign='center';
+  for(let p=-30;p<=30;p+=10){
+    if(p===0) continue;
+    const y = -p*3.2;
+    const half = p%20===0?42:24;
+    ctx.lineWidth=1.2;
+    ctx.beginPath(); ctx.moveTo(-half,y); ctx.lineTo(half,y); ctx.stroke();
+    ctx.fillText(String(p), half+15, y+3);
+  }
+  ctx.restore();
+
+  // Símbolo fijo de aeronave
+  ctx.strokeStyle='#ffc857'; ctx.lineWidth=3;
+  ctx.beginPath();
+  ctx.moveTo(cx-52,cy); ctx.lineTo(cx-18,cy); ctx.lineTo(cx-8,cy+9);
+  ctx.moveTo(cx+52,cy); ctx.lineTo(cx+18,cy); ctx.lineTo(cx+8,cy+9);
+  ctx.moveTo(cx,cy-6); ctx.lineTo(cx,cy+6);
+  ctx.stroke();
+
+  // Arco de banqueo
+  ctx.strokeStyle='rgba(232,244,255,.8)'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.arc(cx,cy,Math.min(W,H)/2-13,rad(-60),rad(60)); ctx.stroke();
+  for(const a of [-60,-45,-30,-20,-10,0,10,20,30,45,60]){
+    const len = (a%30===0)?8:4;
+    const r0 = Math.min(W,H)/2-13, r1 = r0-len;
+    const aa = rad(a-90);
+    ctx.beginPath();
+    ctx.moveTo(cx+Math.cos(aa)*r0, cy+Math.sin(aa)*r0);
+    ctx.lineTo(cx+Math.cos(aa)*r1, cy+Math.sin(aa)*r1);
+    ctx.stroke();
+  }
+  // Indicador de banqueo
+  ctx.save(); ctx.translate(cx,cy); ctx.rotate(-rad(roll));
+  ctx.fillStyle='#ffc857';
+  ctx.beginPath(); ctx.moveTo(0,-Math.min(W,H)/2+13); ctx.lineTo(-7,-Math.min(W,H)/2+24); ctx.lineTo(7,-Math.min(W,H)/2+24); ctx.closePath(); ctx.fill();
+  ctx.restore();
+
+  ctx.restore();
+
+  // Caja de rumbo
+  ctx.fillStyle='rgba(2,7,13,.9)'; ctx.strokeStyle='rgba(56,217,255,.5)'; ctx.lineWidth=1;
+  roundRect(ctx,cx-34,5,68,20,5); ctx.fill(); ctx.stroke();
+  ctx.fillStyle='#e8f4ff'; ctx.font='700 12px Consolas'; ctx.textAlign='center';
+  ctx.fillText(String(Math.round(yaw)).padStart(3,'0')+'°',cx,19);
+  // Borde
+  ctx.strokeStyle='rgba(56,217,255,.55)'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.arc(cx,cy,Math.min(W,H)/2-2,0,Math.PI*2); ctx.stroke();
+}
+
+/* =========================================================================
+   MINIMAPA
+   ========================================================================= */
+function drawMinimap(d){
+  const canvas = $('minimap'); if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W=canvas.width, H=canvas.height;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#03080f'; ctx.fillRect(0,0,W,H);
+
+  const isCessna = d.mission==='cessna';
+  const bounds = isCessna ? {minX:-2200,maxX:700,minZ:-1800,maxZ:900} : App.campusBounds;
+  const pad = 14;
+  const sx = (W-pad*2)/Math.max(1,bounds.maxX-bounds.minX);
+  const sz = (H-pad*2)/Math.max(1,bounds.maxZ-bounds.minZ);
+  const s = Math.min(sx,sz);
+  const ox = pad + (W-pad*2 - (bounds.maxX-bounds.minX)*s)/2;
+  const oz = pad + (H-pad*2 - (bounds.maxZ-bounds.minZ)*s)/2;
+  const px = x => ox + (x-bounds.minX)*s;
+  const pz = z => oz + (z-bounds.minZ)*s;
+
+  // Rejilla
+  ctx.strokeStyle='rgba(90,180,230,.10)'; ctx.lineWidth=1;
+  for(let i=0;i<=8;i++){
+    const X=pad+i*(W-pad*2)/8, Y=pad+i*(H-pad*2)/8;
+    ctx.beginPath(); ctx.moveTo(X,pad); ctx.lineTo(X,H-pad); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(pad,Y); ctx.lineTo(W-pad,Y); ctx.stroke();
+  }
+
+  if(!isCessna && App.sceneData){
+    // Edificios
+    (App.sceneData.buildings||[]).forEach(b=>{
+      ctx.beginPath();
+      b.polygon.forEach((p,i)=>{ const X=px(p[0]), Y=pz(p[1]); i?ctx.lineTo(X,Y):ctx.moveTo(X,Y); });
+      ctx.closePath();
+      ctx.fillStyle='rgba(70,110,150,.42)'; ctx.fill();
+      ctx.strokeStyle='rgba(56,217,255,.18)'; ctx.lineWidth=0.7; ctx.stroke();
+    });
+    // Ruta planificada
+    if(App.missionPath){
+      ctx.beginPath();
+      App.missionPath.forEach((p,i)=>{ const X=px(p.x), Y=pz(-p.z); i?ctx.lineTo(X,Y):ctx.moveTo(X,Y); });
+      ctx.strokeStyle='rgba(56,217,255,.30)'; ctx.lineWidth=1.2; ctx.setLineDash([4,4]); ctx.stroke(); ctx.setLineDash([]);
+    }
+    // Corredor sin GPS
+    if(App.missionData?.gps_denied?.length && App.state){
+      const [a,b] = App.missionData.gps_denied[0];
+      const t = Number(App.state.sim_time||0);
+      if(t>=a && t<=b){
+        ctx.fillStyle='rgba(255,93,115,.10)'; ctx.fillRect(pad,pad,W-pad*2,H-pad*2);
+      }
+    }
+  }
+
+  // Trayectoria GT reciente
+  if(App.trails.gt && App.trails.gt.count>1){
+    const t = App.trails.gt;
+    ctx.beginPath();
+    let started=false;
+    for(let i=0;i<t.count;i++){
+      const X=px(t.positions[i*3]), Y=pz(t.positions[i*3+2]);
+      if(!started){ ctx.moveTo(X,Y); started=true; } else ctx.lineTo(X,Y);
+    }
+    ctx.strokeStyle='rgba(56,217,255,.75)'; ctx.lineWidth=1.6; ctx.stroke();
+  }
+
+  // Vehículo
+  const v = d.vehicle||{};
+  const vx = px(v.x||0), vz = pz(v.z||0);
+  ctx.save();
+  ctx.translate(vx,vz); ctx.rotate(rad(v.yaw||0));
+  ctx.fillStyle='#b6ff5c';
+  ctx.beginPath(); ctx.moveTo(0,-6); ctx.lineTo(4,5); ctx.lineTo(0,2); ctx.lineTo(-4,5); ctx.closePath(); ctx.fill();
+  ctx.restore();
+  ctx.strokeStyle='rgba(182,255,92,.35)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.arc(vx,vz,10,0,Math.PI*2); ctx.stroke();
+
+  // Escala
+  ctx.fillStyle='rgba(127,151,179,.75)'; ctx.font='8px Consolas'; ctx.textAlign='left';
+  const scaleM = 100;
+  ctx.fillText(`${scaleM} m`, pad+2, H-4);
+  ctx.strokeStyle='rgba(127,151,179,.55)';
+  ctx.beginPath(); ctx.moveTo(pad+2,H-14); ctx.lineTo(pad+2+scaleM*s,H-14); ctx.stroke();
+  ctx.textAlign='right'; ctx.fillStyle='rgba(56,217,255,.7)';
+  ctx.fillText(isCessna?'CESSNA':'TECMM', W-pad-2, 12);
+}
+
+/* =========================================================================
+   CÁMARAS
+   ========================================================================= */
+function initCameras(){
+  const stamp = Date.now();
+  ['nadir','sky','real'].forEach(name=>{
+    const img = $('cam-'+name);
+    if(!img) return;
+    img.src = `/camera/${name}.mjpg?t=${stamp}`;
+    img.onerror = ()=>{ $('cam-'+name+'-sub').textContent='SIN SEÑAL'; };
+  });
+  document.querySelectorAll('.cam').forEach(cam=>{
+    cam.addEventListener('click',()=>{
+      const name = cam.dataset.cam;
+      $('modal-img').src = `/camera/${name}.jpg?t=${Date.now()}`;
+      $('modal').classList.add('open');
+    });
+  });
+  $('modal-close').addEventListener('click',()=>$('modal').classList.remove('open'));
+  $('modal').addEventListener('click',e=>{ if(e.target.id==='modal') $('modal').classList.remove('open'); });
+
+  $('cam-apply').addEventListener('click', async ()=>{
+    let value = $('cam-url').value.trim();
+    if(!value) return toast('Escribe una URL MJPEG o un índice de webcam');
+    const source = /^\d+$/.test(value) ? Number(value) : value;
+    const res = await postControl({action:'camera_config', name:'real', source});
+    if(res.ok) toast('Cámara real configurada'); else toast('Error: '+(res.error||'no se pudo configurar'));
+  });
+  document.querySelectorAll('[data-cam-preset]').forEach(btn=>{
+    btn.addEventListener('click',()=>{ $('cam-url').value = btn.dataset.camPreset; });
+  });
+}
+
+async function refreshCameraStatus(){
+  try{
+    const s = await fetchJSON('/api/status');
+    const cams = s.cameras||{};
+    ['nadir','sky','real'].forEach(name=>{
+      const c = cams[name]||{};
+      const sub = $('cam-'+name+'-sub');
+      if(sub){
+        if(c.online) sub.textContent = c.kind==='virtual' ? `${c.index+1}/${c.frames}` : (c.fps?`${c.fps} FPS`:'EN VIVO');
+        else sub.textContent = 'SIN SEÑAL';
+      }
+    });
+  }catch(e){}
+}
+
+/* =========================================================================
+   WEBSOCKET + FALLBACK
+   ========================================================================= */
+async function fetchJSON(url, opts){
+  const res = await fetch(url, opts);
+  if(!res.ok) throw new Error(`HTTP ${res.status} en ${url}`);
+  return res.json();
+}
+
+async function postControl(payload){
+  try{
+    return await fetchJSON('/api/control', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
+    });
+  }catch(e){ return {ok:false,error:e.message}; }
+}
+
+function connectWS(){
+  if(App.ws) { try{App.ws.close();}catch(e){} }
+  const proto = location.protocol==='https:'?'wss':'ws';
+  const wsPort = App.config?.ws_port || 8081;
+  const url = `${proto}://${location.hostname}:${wsPort}`;
+  setConn('connecting');
+  let ws;
+  try{ ws = new WebSocket(url); }catch(e){ startPolling(); return; }
+  App.ws = ws;
+
+  ws.onopen = ()=>{
+    App.connected = true; App.wsRetries = 0;
+    setConn('ok');
+    stopPolling();
+    ws.send(JSON.stringify({type:'get_state'}));
+  };
+  ws.onmessage = ev=>{
+    try{
+      const msg = JSON.parse(ev.data);
+      if(msg.type==='hello' && msg.config){
+        App.config = {...App.config, ...msg.config};
+        if(msg.config.missions) renderMissionTabs(msg.config.missions);
+      }
+      if(msg.type==='state' && msg.data){
+        if(msg.clear_trails) clearTrails();
+        applyState(msg.data);
+      }
+    }catch(e){ console.warn('WS message', e); }
+  };
+  ws.onerror = ()=>{ setConn('warn'); };
+  ws.onclose = ()=>{
+    App.connected = false;
+    setConn('bad');
+    startPolling();
+    App.wsRetries++;
+    const delay = Math.min(8000, 600*App.wsRetries);
+    setTimeout(connectWS, delay);
+  };
+}
+
+function startPolling(){
+  if(App.pollingTimer) return;
+  App.pollingTimer = setInterval(async ()=>{
+    try{
+      const latest = await fetchJSON('/api/telemetry/latest');
+      if(latest && latest.vehicle) applyState(latest);
+      const status = await fetchJSON('/api/status');
+      setConn('warn');
+    }catch(e){}
+  }, 700);
+}
+function stopPolling(){
+  if(App.pollingTimer){ clearInterval(App.pollingTimer); App.pollingTimer=null; }
+}
+function setConn(mode){
+  const badge = $('conn-badge'), text = $('conn-text');
+  badge.className = 'conn ' + (mode==='ok'?'ok':mode==='warn'?'warn':'');
+  text.textContent = mode==='ok'?'EN LÍNEA':mode==='warn'?'RECONECTANDO':'SIN ENLACE';
+}
+
+/* =========================================================================
+   UI
+   ========================================================================= */
+function bindUI(){
+  // Misión
+  document.querySelectorAll('.mission-tab').forEach(tab=>{
+    tab.addEventListener('click', ()=> setMission(tab.dataset.mission));
+  });
+  // Fuente
+  $('source-select').addEventListener('change', e=>{
+    const source = e.target.value;
+    const mission = source==='campus'?'campus':(source==='sim'?'cessna':'hardware');
+    setSource(source, mission);
+  });
+  // Play/pause
+  $('btn-play').addEventListener('click', async ()=>{
+    const paused = App.state?.paused;
+    const res = await postControl({action: paused?'play':'pause'});
+    if(res.ok){ $('btn-play').textContent = res.paused?'▶ Reanudar':'⏸ Pausar'; }
+  });
+  $('btn-reset').addEventListener('click', async ()=>{
+    await postControl({action:'reset'});
+    clearTrails();
+    App.history = [];
+    toast('Misión reiniciada');
+  });
+  $('btn-record').addEventListener('click', async ()=>{
+    const rec = !!App.state?.recording;
+    const res = await postControl({action: rec?'record_stop':'record_start'});
+    if(res.ok){
+      $('badge-rec').style.display = rec?'none':'inline-flex';
+      $('btn-record').textContent = rec?'● Grabar':'■ Detener';
+      toast(rec?'Grabación detenida':'Grabación iniciada');
+    }
+  });
+  $('speed').addEventListener('input', e=>{
+    const speed = Number(e.target.value);
+    $('speed-val').textContent = speed.toFixed(1)+'×';
+    postControl({action:'set_speed', speed});
+  });
+  ['gt','ekf','ins','vo','vision'].forEach(name=>{
+    $('chk-'+name).addEventListener('change', applyTrailVisibility);
+  });
+  document.querySelectorAll('[data-view]').forEach(btn=>{
+    btn.addEventListener('click', ()=> setViewMode(btn.dataset.view));
+  });
+  // Ingesta
+  $('btn-send').addEventListener('click', sendTelemetryForm);
+  $('btn-zero').addEventListener('click', async ()=>{
+    ['ax','ay','gx','gy','gz','roll','pitch','yaw'].forEach(k=>$('f-'+k).value='0');
+    $('f-az').value='-9.81';
+    await postControl({action:'calibrate'});
+    toast('Integrador y actitud a cero');
+  });
+  $('btn-live').addEventListener('click', ()=> setSource('live','hardware'));
+}
+
+function renderMissionTabs(missions){
+  const tabs = $('mission-tabs');
+  if(!tabs || !missions?.length) return;
+  tabs.innerHTML = '';
+  missions.forEach(m=>{
+    const b = document.createElement('button');
+    b.className = 'mission-tab' + (m.id===App.missionId?' active':'');
+    b.dataset.mission = m.id;
+    b.textContent = m.name.split('·')[0].trim();
+    b.addEventListener('click', ()=>setMission(m.id));
+    tabs.appendChild(b);
+  });
+}
+
+async function setMission(mission){
+  App.missionId = mission;
+  App.sceneLock = performance.now() + 2500;
+  document.querySelectorAll('.mission-tab').forEach(t=>t.classList.toggle('active', t.dataset.mission===mission));
+  const source = mission==='campus'?'campus':(mission==='cessna'?'sim':'live');
+  App.sourceId = source;
+  $('source-select').value = source;
+  await postControl({action:'set_mission', mission});
+  await switchSceneForMission(mission, true);
+  setViewMode('orbit');
+  clearTrails(); App.history = [];
+}
+
+async function setSource(source, mission){
+  App.sourceId = source;
+  App.missionId = mission;
+  App.sceneLock = performance.now() + 2500;
+  document.querySelectorAll('.mission-tab').forEach(t=>t.classList.toggle('active', t.dataset.mission===mission));
+  const res = await postControl({action:'set_source', source, mission});
+  if(!res.ok) toast('No se pudo cambiar la fuente');
+  await switchSceneForMission(mission, true);
+  setViewMode('orbit');
+  clearTrails(); App.history = [];
+}
+
+async function switchSceneForMission(mission, reload){
+  if(mission==='hardware') mission='campus';
+  if(!reload && App.sceneMission===mission) return;
+  App.sceneMission = mission;
+  applyEnvironment(mission);
+  try{
+    const scene = await fetchJSON('/api/scene?mission='+mission);
+    App.sceneData = scene;
+    if(mission==='campus') await buildCampusScene(scene);
+    else await buildCessnaScene(scene);
+    App.campusGroup.visible = mission==='campus';
+    App.cessnaGroup.visible = mission==='cessna';
+    // El vehículo correcto
+    if(App.droneModel) App.droneModel.visible = mission!=='cessna';
+    if(App.cessnaModel) App.cessnaModel.visible = mission==='cessna';
+  }catch(e){
+    console.error('No se pudo cargar la escena', e);
+    toast('No se pudo cargar la escena: '+e.message);
+  }
+}
+
+function setViewMode(mode){
+  App.viewMode = mode;
+  document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('primary', b.dataset.view===mode));
+  App.controls.enabled = (mode==='orbit');
+  if(mode==='orbit'){
+    App.controls.target.set(0,0,0);
+    App.controls.update();
+  }
+}
+
+/* Atmósfera e iluminación por misión: día para el Cessna, atardecer para el campus. */
+function applyEnvironment(mission){
+  if(!App.scene) return;
+  if(mission==='cessna'){
+    App.scene.background = new THREE.Color(0x8ec5e8);
+    App.scene.fog = new THREE.FogExp2(0xb3d6ee, 0.00005);
+  }else{
+    App.scene.background = new THREE.Color(0x060d17);
+    App.scene.fog = new THREE.FogExp2(0x0a1524, 0.00016);
+  }
+}
+
+function updateCameraMode(dt){
+  const v = App.state?.vehicle;
+  if(!v) return;
+  const pos = new THREE.Vector3(v.x||0, v.y||0, v.z||0);
+  const yaw = rad(v.yaw||0);
+  const target = new THREE.Vector3();
+  const desired = new THREE.Vector3();
+  if(App.viewMode==='chase'){
+    const back = new THREE.Vector3(-Math.sin(yaw)*70, 28, Math.cos(yaw)*70);
+    desired.copy(pos).add(back);
+    target.copy(pos);
+  }else if(App.viewMode==='cockpit'){
+    const forward = new THREE.Vector3(Math.sin(yaw)*3, 1.6, -Math.cos(yaw)*3);
+    desired.copy(pos).add(forward);
+    target.copy(pos).add(new THREE.Vector3(Math.sin(yaw)*80, 0, -Math.cos(yaw)*80));
+  }else if(App.viewMode==='top'){
+    desired.copy(pos).add(new THREE.Vector3(0.1, 220, 0.1));
+    target.copy(pos);
+  }
+  const lerp = 1 - Math.exp(-6*dt);
+  App.camera.position.lerp(desired, lerp);
+  App.cameraTarget.lerp(target, lerp);
+  App.camera.lookAt(App.cameraTarget);
+}
+
+async function sendTelemetryForm(){
+  const num = id => { const v = $(id).value; return v===''?null:Number(v); };
+  const payload = {
+    ax:num('f-ax'), ay:num('f-ay'), az:num('f-az'),
+    gx:num('f-gx'), gy:num('f-gy'), gz:num('f-gz'),
+    roll_deg:num('f-roll'), pitch_deg:num('f-pitch'), yaw_deg:num('f-yaw'),
+    lat:num('f-lat'), lon:num('f-lon'), alt_agl_m:num('f-alt')
+  };
+  Object.keys(payload).forEach(k=>{ if(payload[k]===null) delete payload[k]; });
+  try{
+    const res = await fetchJSON('/api/telemetry', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
+    });
+    toast('Muestra recibida · seq '+res.seq);
+  }catch(e){ toast('Error al enviar: '+e.message); }
+}
+
+function toast(message){
+  const el = $('toast');
+  el.textContent = message;
+  el.classList.add('show');
+  clearTimeout(App.toastTimer);
+  App.toastTimer = setTimeout(()=>el.classList.remove('show'), 2600);
+}
+
+function updateClock(){
+  const now = new Date();
+  $('clock').textContent = now.toLocaleTimeString('es-MX', {hour12:false});
+}
+
+/* =========================================================================
+   ARRANQUE
+   ========================================================================= */
+async function init(){
+  initThree();
+
+  // Modelos
+  App.droneModel = buildDroneModel();
+  App.vehicleRoot.add(App.droneModel);
+  const plane = buildCessnaModel();
+  App.vehicleRoot.add(plane);
+
+  initTrails();
+  initCameras();
+  bindUI();
+  setViewMode('orbit');
+
+  try{
+    const status = await fetchJSON('/api/status');
+    App.config = status.config || {};
+    App.missionId = status.mission || 'campus';
+    App.sourceId = status.source || 'campus';
+    if(status.cameras) App.config.camera_status = status.cameras;
+  }catch(e){ console.warn('status', e); }
+
+  if(App.config?.missions) renderMissionTabs(App.config.missions);
+  $('source-select').value = App.sourceId;
+  document.querySelectorAll('.mission-tab').forEach(t=>t.classList.toggle('active', t.dataset.mission===App.missionId));
+
+  await switchSceneForMission(App.missionId, true);
+  connectWS();
+  setInterval(updateClock, 1000);
+  updateClock();
+  setInterval(refreshCameraStatus, 4000);
+  setInterval(()=>maybeDrawCharts(false), 250);
+
+  // Si el WebSocket no está disponible, el fallback ya arranca solo.
+  setTimeout(()=>{ if(!App.connected) startPolling(); }, 2500);
+}
+
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Campus Drone — Navegación Autónoma</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:#0a0a0a;overflow:hidden;font-family:'Courier New',monospace;color:#00ffcc;}
+  #three-canvas{position:fixed;left:0;top:0;width:calc(100% - 280px);height:100vh;}
+
+  /* HUD TOP BAR */
+  #hud-top{position:fixed;top:0;left:0;width:calc(100% - 280px);height:36px;background:rgba(0,0,0,0.80);border-bottom:1px solid rgba(0,255,200,0.35);display:flex;align-items:center;padding:0 14px;gap:28px;z-index:50;font-size:12px;}
+  #hud-top span{color:#00ffcc;}
+  #hud-top .sep{color:rgba(0,255,200,0.3);}
+
+  /* DOCK DERECHO */
+  #dock{position:fixed;right:0;top:0;width:280px;height:100vh;background:rgba(5,10,20,0.95);border-left:2px solid #00ffcc;display:flex;flex-direction:column;gap:8px;padding:12px;overflow-y:auto;z-index:50;}
+  #dock h3{color:#00ffcc;font-size:12px;letter-spacing:2px;text-transform:uppercase;padding-bottom:4px;border-bottom:1px solid rgba(0,255,200,0.3);}
+
+  .panel{background:rgba(0,0,0,0.75);border:1px solid rgba(0,255,200,0.4);border-radius:8px;padding:8px;}
+  .panel-row{display:flex;justify-content:space-between;align-items:center;font-size:11px;margin:3px 0;}
+  .val{color:#fff;font-weight:bold;}
+  .ok{color:#00ff88;}
+  .warn{color:#ff8800;}
+  .err{color:#ff2244;}
+
+  /* Botones de cámara */
+  .cam-btn{width:100%;margin:2px 0;padding:7px 10px;background:rgba(0,20,15,0.7);border:1px solid rgba(0,255,200,0.3);border-radius:6px;color:#00ffcc;font-family:'Courier New',monospace;font-size:12px;cursor:pointer;text-align:left;transition:all .2s;}
+  .cam-btn:hover{background:rgba(0,255,200,0.1);}
+  .cam-btn.active{border:2px solid #00ffcc;background:rgba(0,255,200,0.15);}
+
+  /* Batería */
+  #batt-bar-wrap{background:#111;border:1px solid #333;border-radius:4px;height:10px;width:100%;margin-top:4px;}
+  #batt-bar{height:100%;border-radius:4px;background:#00ff88;width:100%;transition:width .5s,background .5s;}
+
+  /* HUD LEFT — PFD */
+  #hud-left{position:fixed;left:12px;bottom:52px;z-index:50;display:flex;flex-direction:column;gap:6px;}
+  #pfd-wrap{background:rgba(0,0,0,0.75);border:1px solid rgba(0,255,200,0.4);border-radius:8px;padding:6px;}
+  #pfd-canvas{display:block;}
+  .pfd-row{font-size:11px;color:#00ffcc;padding:2px 4px;}
+  .pfd-row span{color:#fff;font-weight:bold;}
+
+  /* GPS ALERT */
+  #gps-alert{display:none;position:fixed;top:50%;left:calc(50% - 280px);transform:translateY(-50%);background:rgba(200,0,0,0.85);color:white;padding:16px 24px;border-radius:12px;font-size:18px;font-weight:bold;text-align:center;z-index:999;animation:blink 1s infinite;}
+  @keyframes blink{0%,100%{opacity:1;}50%{opacity:0.55;}}
+
+  /* TIMELINE BAR */
+  #timeline{position:fixed;bottom:0;left:0;width:calc(100% - 280px);height:44px;background:rgba(0,0,0,0.88);border-top:1px solid rgba(0,255,200,0.3);display:flex;align-items:center;padding:0 12px;gap:10px;z-index:50;}
+  #tl-slider{flex:1;accent-color:#00ffcc;height:4px;}
+  .tl-btn{background:rgba(0,20,15,0.7);border:1px solid rgba(0,255,200,0.4);border-radius:5px;color:#00ffcc;font-size:14px;padding:4px 10px;cursor:pointer;font-family:'Courier New',monospace;}
+  .tl-btn:hover{background:rgba(0,255,200,0.15);}
+  .spd-btn{background:rgba(0,20,15,0.7);border:1px solid rgba(0,255,200,0.3);border-radius:4px;color:#aaa;font-size:11px;padding:3px 7px;cursor:pointer;font-family:'Courier New',monospace;}
+  .spd-btn.active{color:#00ffcc;border-color:#00ffcc;}
+  #tl-time{color:#00ffcc;font-size:12px;min-width:56px;}
+</style>
+</head>
+<body>
+
+<!-- HUD TOP BAR -->
+<div id="hud-top">
+  <span>🚁 CAMPUS DRONE SIM</span>
+  <span class="sep">|</span>
+  <span>POS: X=<span id="h-px">0.0</span> Y=<span id="h-py">0.0</span> Z=<span id="h-pz">0.0</span></span>
+  <span class="sep">|</span>
+  <span>YAW: <span id="h-yaw">0°</span></span>
+  <span class="sep">|</span>
+  <span>VEL: <span id="h-vel">0.0</span> m/s</span>
+  <span class="sep">|</span>
+  <span id="h-gps-status" style="color:#00ff88;">● GPS OK</span>
+</div>
+
+<!-- GPS ALERT -->
+<div id="gps-alert">⚠ PÉRDIDA TOTAL DE SEÑAL SATELITAL<br>
+  <span style="font-size:13px;font-weight:normal;">Sistema VIO activado — Navegación autónoma</span>
+</div>
+
+<!-- HUD LEFT — PFD -->
+<div id="hud-left">
+  <div id="pfd-wrap">
+    <canvas id="pfd-canvas" width="110" height="110"></canvas>
+    <div class="pfd-row">ALT: <span id="pfd-alt">0.0</span> m</div>
+    <div class="pfd-row">VEL: <span id="pfd-vel">0.0</span> m/s</div>
+    <div class="pfd-row">HDG: <span id="pfd-hdg">0</span>°</div>
+  </div>
+</div>
+
+<!-- DOCK DERECHO -->
+<div id="dock">
+  <h3>🎥 Cámara</h3>
+  <button class="cam-btn active" id="btn-chase" onclick="setCam('chase')">🎯 Persecución</button>
+  <button class="cam-btn" id="btn-fpv"   onclick="setCam('fpv')">📷 FPV</button>
+  <button class="cam-btn" id="btn-orbit" onclick="setCam('orbit')">🌐 Órbita</button>
+  <button class="cam-btn" id="btn-top"   onclick="setCam('top')">🛰 Cenital</button>
+
+  <h3>🛰 GNSS Monitor</h3>
+  <div class="panel">
+    <div class="panel-row">Satélites <span id="d-sats" class="val ok">--</span></div>
+    <div class="panel-row">Estado <span id="d-gps-state" class="val ok">● GPS NOMINAL</span></div>
+    <div class="panel-row" id="d-vio-row" style="display:none;">VIO <span class="ok">✅ Activo</span></div>
+    <div class="panel-row" id="d-vio-err-row" style="display:none;">Error VIO <span id="d-vio-err" class="val ok">-- cm</span></div>
+    <div class="panel-row" id="d-drift-row">IMU Drift <span id="d-drift" class="val">-- m</span></div>
+  </div>
+
+  <h3>🔋 Batería</h3>
+  <div class="panel">
+    <div class="panel-row">Nivel <span id="d-batt" class="val ok">100%</span></div>
+    <div id="batt-bar-wrap"><div id="batt-bar"></div></div>
+  </div>
+
+  <h3>📡 Telemetría</h3>
+  <div class="panel">
+    <div class="panel-row">WS <span id="d-ws" class="val warn">Conectando…</span></div>
+    <div class="panel-row">Pitch <span id="d-pitch" class="val">0°</span></div>
+    <div class="panel-row">Roll  <span id="d-roll"  class="val">0°</span></div>
+    <div class="panel-row">Fused X <span id="d-fx" class="val">--</span></div>
+    <div class="panel-row">Fused Z <span id="d-fz" class="val">--</span></div>
+  </div>
+</div>
+
+<!-- TIMELINE BAR -->
+<div id="timeline">
+  <span id="tl-time">T+00:00</span>
+  <button class="tl-btn" id="btn-play"  onclick="sendWS({cmd:'play'})">▶</button>
+  <button class="tl-btn" id="btn-pause" onclick="sendWS({cmd:'pause'})">⏸</button>
+  <button class="tl-btn" id="btn-reset" onclick="sendWS({cmd:'seek',time:0})">⏹</button>
+  <input  type="range" id="tl-slider" min="0" max="95" value="0" step="0.1"
+          oninput="sendWS({cmd:'seek',time:parseFloat(this.value)})"/>
+  <button class="spd-btn active" id="spd-05" onclick="setSpeed(0.5)">0.5×</button>
+  <button class="spd-btn active" id="spd-1"  onclick="setSpeed(1)"  style="border-color:#00ffcc;color:#00ffcc;">1×</button>
+  <button class="spd-btn" id="spd-2"  onclick="setSpeed(2)">2×</button>
+</div>
+
+<canvas id="three-canvas"></canvas>
+
+<script src="/three.min.js"></script>
+<script src="/OrbitControls.js"></script>
+<script>
+
+// ─── ESCENA ───────────────────────────────────────────────────────────────────
+const canvas = document.getElementById('three-canvas');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0xb0d8f5, 400, 1400);
+scene.background = new THREE.Color(0x87ceeb);
+
+const camera = new THREE.PerspectiveCamera(60, 1, 0.5, 2000);
+camera.position.set(0, 25, 60);
+
+function resize(){
+  const W = window.innerWidth - 280;
+  const H = window.innerHeight;
+  renderer.setSize(W, H);
+  camera.aspect = W / H;
+  camera.updateProjectionMatrix();
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ─── LUCES ────────────────────────────────────────────────────────────────────
+const hemi = new THREE.HemisphereLight(0x87ceeb, 0xd2a679, 0.8);
+scene.add(hemi);
+
+const sun = new THREE.DirectionalLight(0xffffff, 1.2);
+sun.position.set(300, 400, 200);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.near = 1;
+sun.shadow.camera.far = 1500;
+sun.shadow.camera.left = -600;
+sun.shadow.camera.right = 600;
+sun.shadow.camera.top = 600;
+sun.shadow.camera.bottom = -600;
+scene.add(sun);
+
+// ─── SUELO ────────────────────────────────────────────────────────────────────
+const groundGeo = new THREE.PlaneGeometry(858, 853);
+const texLoader = new THREE.TextureLoader();
+let groundMat;
+
+const groundTex = texLoader.load(
+  '/data/tecmm_campus_map.png',
+  ()=>{}, ()=>{},
+  ()=>{ /* fallback color */ }
+);
+groundMat = new THREE.MeshLambertMaterial({map: groundTex, color: 0xa8c878});
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// ─── ESTACIONAMIENTO ─────────────────────────────────────────────────────────
+const parkGeo = new THREE.PlaneGeometry(200, 150);
+const parkMat = new THREE.MeshLambertMaterial({color:0x2a2a2a});
+const park = new THREE.Mesh(parkGeo, parkMat);
+park.rotation.x = -Math.PI/2;
+park.position.set(-50, 0.02, -310);
+park.receiveShadow = true;
+scene.add(park);
+
+// ─── HELIPUERTO ───────────────────────────────────────────────────────────────
+(function buildHelipad(){
+  // Círculo blanco
+  const geo = new THREE.CircleGeometry(12, 48);
+  const mat = new THREE.MeshLambertMaterial({color:0xffffff});
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.rotation.x = -Math.PI/2;
+  mesh.position.set(0, 0.05, 0);
+  scene.add(mesh);
+
+  // "H" con líneas (BoxGeometry planas)
+  const hMat = new THREE.MeshBasicMaterial({color:0xffffff});
+  [[0,-3.5,0, 0.8,0.1,7],   // columna izq
+   [0, 3.5,0, 0.8,0.1,7],   // columna der  (en X)
+   [0,  0,  0, 7,  0.1,0.8] // travesaño
+  ].forEach(([x,z,_,w,h,d])=>{
+    const g=new THREE.BoxGeometry(w,h,d);
+    const m=new THREE.Mesh(g,hMat);
+    m.position.set(x,0.06,z);
+    scene.add(m);
+  });
+})();
+
+// ─── CANCHA DE FÚTBOL ─────────────────────────────────────────────────────────
+(function buildField(){
+  const geo = new THREE.PlaneGeometry(105, 68);
+  const mat = new THREE.MeshLambertMaterial({color:0x2d7a2d});
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.rotation.x = -Math.PI/2;
+  mesh.position.set(50, 0.1, 290);
+  scene.add(mesh);
+
+  // Líneas blancas de la cancha (borde exterior + centro)
+  const lineMat = new THREE.MeshBasicMaterial({color:0xffffff});
+  // Borde
+  [[0, -34, 105, 0.5], [0, 34, 105, 0.5], [-52.5, 0, 0.5, 68], [52.5, 0, 0.5, 68]].forEach(([lx,lz,lw,ld])=>{
+    const g=new THREE.PlaneGeometry(lw,ld);
+    const m=new THREE.Mesh(g,lineMat);
+    m.rotation.x=-Math.PI/2;
+    m.position.set(50+lx, 0.11, 290+lz);
+    scene.add(m);
+  });
+  // Línea centro
+  const cl=new THREE.PlaneGeometry(0.5,68);
+  const cm=new THREE.Mesh(cl,lineMat);
+  cm.rotation.x=-Math.PI/2;
+  cm.position.set(50,0.11,290);
+  scene.add(cm);
+  // Círculo central
+  const cg=new THREE.RingGeometry(9.15,9.65,32);
+  const crm=new THREE.Mesh(cg,lineMat);
+  crm.rotation.x=-Math.PI/2;
+  crm.position.set(50,0.12,290);
+  scene.add(crm);
+})();
+
+// ─── EDIFICIOS ────────────────────────────────────────────────────────────────
+const CAMPUS_BUILDINGS = [
+  {x:-116.8,y:6.0,z:-132.1,w:128,h:12,d:140,label:"Bloque Académico Norte"},
+  {x: 205.2,y:6.0,z: 198.4,w:104,h:12,d: 47,label:"Bloque Laboratorios Sur-Este"},
+  {x: 127.1,y:6.0,z:  93.4,w:110,h:12,d: 45,label:"Edificio Administración / Rectoría"},
+  {x: 118.8,y:4.5,z: 155.0,w: 53,h: 9,d: 44,label:"Edificio Aulas A"},
+  {x: 300.0,y:4.5,z:-230.5,w: 56,h: 9,d: 42,label:"Edificio Aulas B"},
+  {x:  32.5,y:4.5,z:  94.9,w: 48,h: 9,d: 32,label:"Biblioteca / Sala de Cómputo"},
+  {x: -49.5,y:4.5,z:-194.5,w: 80,h: 9,d: 59,label:"Talleres de Ingeniería"},
+  {x:  32.2,y:4.5,z: 146.4,w: 63,h: 9,d: 49,label:"Laboratorio de Electrónica"},
+  {x: 332.3,y:3.5,z: 188.8,w: 31,h: 7,d: 32,label:"Módulo de Servicios"},
+  {x:  36.5,y:3.5,z: 185.0,w: 26,h: 7,d: 39,label:"Módulo Estudiantil"},
+  {x:  40.7,y:3.5,z: 326.5,w: 36,h: 7,d: 24,label:"Domo / Auditorio"},
+  {x: 243.6,y:3.5,z:-187.5,w: 26,h: 7,d: 52,label:"Aula de Posgrado"},
+  {x: 310.1,y:3.5,z:-182.0,w: 24,h: 7,d: 30,label:"Cubículo Docentes"},
+  {x: 150.4,y:3.5,z:-232.2,w: 72,h: 7,d: 10,label:"Pasillo Techado (GPS-Denied)"},
+  {x:  30.2,y:3.5,z:-125.9,w: 36,h: 7,d: 16,label:"Acceso / Caseta de Vigilancia"},
+];
+
+const bodyMat  = new THREE.MeshLambertMaterial({color:0xc8c8c8});
+const roofMat  = new THREE.MeshLambertMaterial({color:0xaaaaaa});
+const gpsMat   = new THREE.MeshLambertMaterial({color:0x777777, transparent:true, opacity:0.75});
+const gpsRoofM = new THREE.MeshLambertMaterial({color:0x666666, transparent:true, opacity:0.70});
+
+CAMPUS_BUILDINGS.forEach(b => {
+  const isGPS = b.label.includes('GPS');
+  const bMat = isGPS ? gpsMat : bodyMat;
+  const rMat = isGPS ? gpsRoofM : roofMat;
+
+  // Cuerpo
+  const bg = new THREE.BoxGeometry(b.w, b.h * 2, b.d);
+  const bm = new THREE.Mesh(bg, bMat);
+  bm.position.set(b.x, b.h, b.z);
+  bm.castShadow = true;
+  bm.receiveShadow = true;
+  scene.add(bm);
+
+  // Techo
+  const tg = new THREE.BoxGeometry(b.w + 0.5, 0.6, b.d + 0.5);
+  const tm = new THREE.Mesh(tg, rMat);
+  tm.position.set(b.x, b.h * 2 + 0.3, b.z);
+  tm.castShadow = true;
+  scene.add(tm);
+});
+
+// ─── LUZ GPS-DENIED ───────────────────────────────────────────────────────────
+let gpsLight = new THREE.PointLight(0xff0000, 2.5, 60);
+gpsLight.position.set(150.4, 10, -232.2);
+scene.add(gpsLight);
+
+// ─── ÁRBOLES ─────────────────────────────────────────────────────────────────
+const treePositions = [
+  [-180, 80], [-160, 20], [-200, -50], [80, -80], [60, 250],
+  [-10, 220], [200, -50], [260, 100], [380, -100], [400, 50],
+  [-80, 300], [100, -300], [200, -260], [-100, -100], [170, 250]
+];
+const trunkMat = new THREE.MeshLambertMaterial({color:0x5c3a1e});
+const foliageMat = new THREE.MeshLambertMaterial({color:0x2d6a2d});
+
+treePositions.forEach(([tx, tz]) => {
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.5, 4, 7), trunkMat);
+  trunk.position.set(tx, 2, tz);
+  trunk.castShadow = true;
+  scene.add(trunk);
+  const foliage = new THREE.Mesh(new THREE.SphereGeometry(3.2, 8, 7), foliageMat);
+  foliage.position.set(tx, 6.5, tz);
+  foliage.castShadow = true;
+  scene.add(foliage);
+});
+
+// ─── DRON ─────────────────────────────────────────────────────────────────────
+const droneGroup = new THREE.Group();
+
+// Cuerpo
+const bodyGeo = new THREE.BoxGeometry(0.8, 0.25, 0.8);
+const bodyDroneMat = new THREE.MeshLambertMaterial({color:0x111111});
+droneGroup.add(new THREE.Mesh(bodyGeo, bodyDroneMat));
+
+// Brazos y motores
+const armMat   = new THREE.MeshLambertMaterial({color:0x222222});
+const motorMat = new THREE.MeshLambertMaterial({color:0x333333});
+const propMat  = new THREE.MeshLambertMaterial({color:0xcccccc, transparent:true, opacity:0.65});
+
+const propellers = [];
+const armAngles = [Math.PI/4, 3*Math.PI/4, 5*Math.PI/4, 7*Math.PI/4];
+
+armAngles.forEach(angle => {
+  // Brazo
+  const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 2.4, 6), armMat);
+  arm.rotation.z = Math.PI/2;
+  arm.rotation.y = angle;
+  // Posición del brazo
+  const ax = Math.sin(angle) * 1.2;
+  const az = Math.cos(angle) * 1.2;
+  arm.position.set(ax * 0.5, 0, az * 0.5);
+  // Rotamos el brazo para apuntar hacia el motor
+  const armGroup = new THREE.Group();
+  armGroup.rotation.y = angle;
+  const armMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,2.4,6), armMat);
+  armMesh.rotation.z = Math.PI/2;
+  armMesh.position.x = 1.2;
+  armGroup.add(armMesh);
+  droneGroup.add(armGroup);
+
+  // Motor
+  const mx = Math.sin(angle) * 1.2;
+  const mz = Math.cos(angle) * 1.2;
+  const motor = new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.18,0.15,10), motorMat);
+  motor.position.set(mx, 0.08, mz);
+  droneGroup.add(motor);
+
+  // Hélice
+  const prop = new THREE.Mesh(new THREE.TorusGeometry(0.28,0.03,4,12), propMat);
+  prop.rotation.x = Math.PI/2;
+  prop.position.set(mx, 0.16, mz);
+  droneGroup.add(prop);
+  propellers.push(prop);
+});
+
+// Skids
+const skidMat = new THREE.MeshLambertMaterial({color:0x444444});
+[-0.4, 0.4].forEach(sx => {
+  const skid = new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,1.5,6), skidMat);
+  skid.rotation.z = Math.PI/2;
+  skid.position.set(0, -0.22, sx);
+  droneGroup.add(skid);
+});
+
+// Luz del dron
+const droneLight = new THREE.PointLight(0x00aaff, 1.0, 20);
+droneLight.position.set(0, 0, 0);
+droneGroup.add(droneLight);
+
+droneGroup.scale.set(2, 2, 2);
+droneGroup.position.set(0, 0.5, 0);
+scene.add(droneGroup);
+
+// ─── TRAILS ───────────────────────────────────────────────────────────────────
+const MAX_TRAIL = 300;
+const trailGT  = {pts:[], line:null, mat: new THREE.LineBasicMaterial({color:0x00e5ff})};
+const trailVIO = {pts:[], line:null, mat: new THREE.LineBasicMaterial({color:0x00ff88})};
+const trailIMU = {pts:[], line:null, mat: new THREE.LineBasicMaterial({color:0xff2244})};
+
+function pushTrail(trail, x, y, z) {
+  trail.pts.push(new THREE.Vector3(x, y, z));
+  if(trail.pts.length > MAX_TRAIL) trail.pts.shift();
+  if(trail.line) scene.remove(trail.line);
+  if(trail.pts.length < 2) return;
+  const geo = new THREE.BufferGeometry().setFromPoints(trail.pts);
+  trail.line = new THREE.Line(geo, trail.mat);
+  scene.add(trail.line);
+}
+
+// ─── WAYPOINTS / INTERPOLACIÓN LOCAL ─────────────────────────────────────────
+const WAYPOINTS = [
+  [ 0,   0,   0,   0.5,   0],
+  [ 7,   0,   0,  20.0,   0],
+  [15, 100,  80,  22.0,  45],
+  [24, 120, 140,  20.0,  80],
+  [33,-120,-120,  20.0,-120],
+  [42, -50,-190,  18.0, 180],
+  [48, 150,-220,   9.0,  90],
+  [56, 150,-232,   8.0,  90],
+  [64, 160,-240,   8.5,  90],
+  [72,  50, 200,  24.0,  60],
+  [80,  40, 310,  28.0, 120],
+  [87,  30, 150,  18.0, -60],
+  [91,   0,   0,   6.0,   0],
+  [95,   0,   0,   0.5,   0],
+];
+
+let simTime = 0;
+let simRunning = true;
+let simSpeed = 1;
+let lastReal = Date.now();
+
+function lerp(a,b,t){return a+(b-a)*t;}
+function interpWP(t){
+  t = Math.max(0, Math.min(95, t));
+  let i=0;
+  for(let k=0;k<WAYPOINTS.length-1;k++){
+    if(t >= WAYPOINTS[k][0] && t <= WAYPOINTS[k+1][0]){i=k;break;}
+  }
+  const w0=WAYPOINTS[i], w1=WAYPOINTS[i+1];
+  const alpha=(t-w0[0])/(w1[0]-w0[0]);
+  return {
+    x: lerp(w0[1],w1[1],alpha),
+    z: lerp(w0[2],w1[2],alpha),
+    y: lerp(w0[3],w1[3],alpha),
+    yaw:lerp(w0[4],w1[4],alpha),
+    gps: !(t>=46 && t<=68)
+  };
+}
+
+// ─── CÁMARA ───────────────────────────────────────────────────────────────────
+let camMode = 'chase';
+const orbitControls = new THREE.OrbitControls(camera, canvas);
+orbitControls.enableDamping = true;
+orbitControls.dampingFactor = 0.07;
+orbitControls.enabled = false;
+
+function setCam(mode){
+  camMode = mode;
+  ['chase','fpv','orbit','top'].forEach(m=>{
+    const btn = document.getElementById('btn-'+m);
+    if(btn) btn.classList.toggle('active', m===mode);
+  });
+  orbitControls.enabled = (mode==='orbit');
+  if(mode==='top'){
+    camera.position.set(0,400,0);
+    camera.lookAt(0,0,0);
+  }
+}
+window.setCam = setCam;
+
+const _chaseTgt = new THREE.Vector3();
+function updateCamera(){
+  const dp = droneGroup.position;
+  if(camMode==='chase'){
+    const offset = new THREE.Vector3(0,10,25);
+    offset.applyQuaternion(droneGroup.quaternion);
+    _chaseTgt.copy(dp).add(offset);
+    camera.position.lerp(_chaseTgt, 0.08);
+    camera.lookAt(dp);
+  } else if(camMode==='fpv'){
+    camera.position.copy(dp).add(new THREE.Vector3(0,1,0));
+    const fwd = new THREE.Vector3(0,0,-1).applyQuaternion(droneGroup.quaternion);
+    camera.lookAt(dp.clone().add(fwd.multiplyScalar(50)));
+  } else if(camMode==='orbit'){
+    orbitControls.target.copy(dp);
+    orbitControls.update();
+  } else if(camMode==='top'){
+    // estático
+  }
+}
+
+// ─── HUD PFD ──────────────────────────────────────────────────────────────────
+const pfdCanvas = document.getElementById('pfd-canvas');
+const pfdCtx = pfdCanvas.getContext('2d');
+let pfdPitch=0, pfdRoll=0;
+
+function drawPFD(pitch, roll){
+  const W=110, H=110, cx=55, cy=55;
+  pfdCtx.clearRect(0,0,W,H);
+
+  // Clip circular
+  pfdCtx.save();
+  pfdCtx.beginPath();
+  pfdCtx.arc(cx,cy,52,0,Math.PI*2);
+  pfdCtx.clip();
+
+  // Horizonte
+  pfdCtx.save();
+  pfdCtx.translate(cx,cy);
+  pfdCtx.rotate(-roll*Math.PI/180);
+  const pitchOff = pitch * 1.2;
+  pfdCtx.fillStyle='#1a6bbf';
+  pfdCtx.fillRect(-80,-80+pitchOff,160,80);
+  pfdCtx.fillStyle='#5c3a1e';
+  pfdCtx.fillRect(-80,pitchOff,160,80);
+  pfdCtx.strokeStyle='#fff';
+  pfdCtx.lineWidth=1.5;
+  pfdCtx.beginPath();
+  pfdCtx.moveTo(-60,pitchOff);
+  pfdCtx.lineTo(60,pitchOff);
+  pfdCtx.stroke();
+  pfdCtx.restore();
+
+  // Borde
+  pfdCtx.restore();
+  pfdCtx.strokeStyle='rgba(0,255,200,0.6)';
+  pfdCtx.lineWidth=2;
+  pfdCtx.beginPath();
+  pfdCtx.arc(cx,cy,52,0,Math.PI*2);
+  pfdCtx.stroke();
+
+  // Reticle
+  pfdCtx.strokeStyle='#ff8800';
+  pfdCtx.lineWidth=2;
+  pfdCtx.beginPath();
+  pfdCtx.moveTo(cx-20,cy); pfdCtx.lineTo(cx-5,cy);
+  pfdCtx.moveTo(cx+5,cy);  pfdCtx.lineTo(cx+20,cy);
+  pfdCtx.moveTo(cx,cy-5);  pfdCtx.lineTo(cx,cy+5);
+  pfdCtx.stroke();
+}
+drawPFD(0,0);
+
+// ─── TELEMETRÍA ───────────────────────────────────────────────────────────────
+let telemetry = {pos_x:0,pos_y:0.5,pos_z:0,yaw_deg:0,pitch_deg:0,roll_deg:0,speed_ms:0,
+  fused_x:0,fused_z:0,ins_x:0,ins_z:0,err_fused:0,err_ins:0,
+  gps_available:true,gps_satellites:12,battery:100,t:0};
+
+function applyTelemetry(d){
+  telemetry = {...telemetry, ...d};
+  droneGroup.position.set(d.pos_x??telemetry.pos_x, d.pos_y??telemetry.pos_y, d.pos_z??telemetry.pos_z);
+  droneGroup.rotation.set(
+    THREE.MathUtils.degToRad(d.pitch_deg??0),
+    THREE.MathUtils.degToRad(d.yaw_deg??0),
+    THREE.MathUtils.degToRad(d.roll_deg??0),
+    'YXZ'
+  );
+  updateHUD(d);
+}
+
+function updateHUD(d){
+  const px=d.pos_x??0, py=d.pos_y??0, pz=d.pos_z??0;
+  document.getElementById('h-px').textContent=px.toFixed(1);
+  document.getElementById('h-py').textContent=py.toFixed(1);
+  document.getElementById('h-pz').textContent=pz.toFixed(1);
+  document.getElementById('h-yaw').textContent=(d.yaw_deg??0).toFixed(0)+'°';
+  document.getElementById('h-vel').textContent=(d.speed_ms??0).toFixed(1);
+
+  document.getElementById('pfd-alt').textContent=py.toFixed(1);
+  document.getElementById('pfd-vel').textContent=(d.speed_ms??0).toFixed(1);
+  document.getElementById('pfd-hdg').textContent=((d.yaw_deg??0)+360)%360|0;
+  pfdPitch = d.pitch_deg??0;
+  pfdRoll  = d.roll_deg??0;
+
+  const gpsOk = d.gps_available !== false;
+  document.getElementById('gps-alert').style.display = gpsOk ? 'none' : 'block';
+  const gpsStatusEl = document.getElementById('h-gps-status');
+  gpsStatusEl.textContent = gpsOk ? '● GPS OK' : '⚠ GPS OUTAGE';
+  gpsStatusEl.style.color  = gpsOk ? '#00ff88' : '#ff2244';
+
+  const sats = d.gps_satellites??0;
+  const satsEl = document.getElementById('d-sats');
+  satsEl.textContent = sats;
+  satsEl.className = 'val ' + (sats>=8?'ok':'err');
+
+  const gpsStateEl = document.getElementById('d-gps-state');
+  gpsStateEl.textContent = gpsOk ? '● GPS NOMINAL' : '⚠ GPS OUTAGE';
+  gpsStateEl.className = 'val ' + (gpsOk?'ok':'err');
+
+  document.getElementById('d-vio-row').style.display = gpsOk ? 'none':'flex';
+  document.getElementById('d-vio-err-row').style.display = gpsOk ? 'none':'flex';
+  if(!gpsOk) document.getElementById('d-vio-err').textContent = ((d.err_fused??0)*100).toFixed(1)+' cm';
+
+  const drift = d.err_ins??0;
+  const driftEl = document.getElementById('d-drift');
+  driftEl.textContent = drift.toFixed(2)+' m';
+  driftEl.className = 'val '+(drift>1?'err':drift>0.3?'warn':'ok');
+
+  const batt = d.battery??100;
+  document.getElementById('d-batt').textContent = batt+'%';
+  const bar = document.getElementById('batt-bar');
+  bar.style.width = batt+'%';
+  bar.style.background = batt>50?'#00ff88':batt>20?'#ff8800':'#ff2244';
+
+  document.getElementById('d-pitch').textContent=(d.pitch_deg??0).toFixed(1)+'°';
+  document.getElementById('d-roll').textContent=(d.roll_deg??0).toFixed(1)+'°';
+  document.getElementById('d-fx').textContent=(d.fused_x??0).toFixed(1);
+  document.getElementById('d-fz').textContent=(d.fused_z??0).toFixed(1);
+
+  // Trails
+  pushTrail(trailGT, px, py, pz);
+  if(d.fused_x!=null) pushTrail(trailVIO, d.fused_x, py, d.fused_z);
+  if(!gpsOk && d.ins_x!=null) pushTrail(trailIMU, d.ins_x, py, d.ins_z);
+
+  // Timeline
+  const t = d.t??0;
+  const slider = document.getElementById('tl-slider');
+  slider.value = t;
+  const mm = Math.floor(t/60).toString().padStart(2,'0');
+  const ss = Math.floor(t%60).toString().padStart(2,'0');
+  document.getElementById('tl-time').textContent = `T+${mm}:${ss}`;
+}
+
+// ─── WEBSOCKET ────────────────────────────────────────────────────────────────
+let ws = null;
+function connectWS(){
+  try {
+    ws = new WebSocket('ws://localhost:8091');
+    ws.onopen = ()=>{ document.getElementById('d-ws').textContent='✅ OK'; document.getElementById('d-ws').className='val ok'; };
+    ws.onclose= ()=>{ document.getElementById('d-ws').textContent='❌ Desconectado'; document.getElementById('d-ws').className='val err'; ws=null; setTimeout(connectWS,3000); };
+    ws.onerror= ()=>{ document.getElementById('d-ws').textContent='⚠ Error'; document.getElementById('d-ws').className='val warn'; };
+    ws.onmessage= e=>{
+      try{
+        const d=JSON.parse(e.data);
+        if(d.type==='telemetry') applyTelemetry(d);
+      }catch(err){}
+    };
+  } catch(e) {
+    document.getElementById('d-ws').textContent='❌ N/A';
+    document.getElementById('d-ws').className='val err';
+  }
+}
+connectWS();
+
+function sendWS(obj){
+  if(ws && ws.readyState===WebSocket.OPEN) ws.send(JSON.stringify(obj));
+}
+window.sendWS = sendWS;
+
+function setSpeed(s){
+  simSpeed = s;
+  ['05','1','2'].forEach(id=>{
+    const btn=document.getElementById('spd-'+id);
+    if(btn) btn.classList.remove('active');
+  });
+  const map={0.5:'05',1:'1',2:'2'};
+  const btn=document.getElementById('spd-'+map[s]);
+  if(btn) btn.classList.add('active');
+  sendWS({cmd:'speed',speed:s});
+}
+window.setSpeed = setSpeed;
+
+// ─── SIMULACIÓN LOCAL (si no hay WS) ─────────────────────────────────────────
+function tickSim(dt){
+  if(!simRunning) return;
+  simTime += dt * simSpeed;
+  if(simTime > 95) simTime = 0;
+
+  const wp = interpWP(simTime);
+  const gps = wp.gps;
+  const noiseScale = gps ? 0 : 0.3;
+  const ins_drift  = gps ? 0 : (simTime - 46) * 0.08;
+
+  const fake = {
+    type:'telemetry',
+    pos_x: wp.x,
+    pos_y: wp.y,
+    pos_z: wp.z,
+    yaw_deg: wp.yaw,
+    pitch_deg: (Math.sin(simTime*0.5)*4),
+    roll_deg:  (Math.cos(simTime*0.4)*3),
+    speed_ms: Math.sqrt((wp.x-(simTime>0?interpWP(Math.max(0,simTime-0.1)).x:0))**2+
+                        (wp.z-(simTime>0?interpWP(Math.max(0,simTime-0.1)).z:0))**2)/0.1*0.5,
+    fused_x: wp.x + (gps?0:(Math.random()-0.5)*0.4),
+    fused_z: wp.z + (gps?0:(Math.random()-0.5)*0.4),
+    ins_x:   wp.x + (gps?0:(Math.random()-0.5)*noiseScale + ins_drift*Math.sin(simTime*0.3)),
+    ins_z:   wp.z + (gps?0:(Math.random()-0.5)*noiseScale + ins_drift*Math.cos(simTime*0.3)),
+    err_fused: gps ? 0 : 0.015 + Math.random()*0.01,
+    err_ins:   ins_drift,
+    gps_available: gps,
+    gps_satellites: gps ? Math.round(10 + Math.random()*4) : 0,
+    battery: Math.max(0, 100 - simTime * 0.5),
+    t: simTime
+  };
+  applyTelemetry(fake);
+}
+
+// ─── RENDER LOOP ──────────────────────────────────────────────────────────────
+let prevTime = performance.now();
+
+function animate(){
+  requestAnimationFrame(animate);
+  const now = performance.now();
+  const dt  = Math.min((now - prevTime) / 1000, 0.1);
+  prevTime  = now;
+
+  // Hélices
+  propellers.forEach((p, i) => { p.rotation.y += (i%2===0 ? 0.4 : -0.4); });
+
+  // Luz GPS pulsante
+  const t = Date.now() * 0.001;
+  if(gpsLight) gpsLight.intensity = 2.5 + Math.sin(t * 5) * 1.5;
+
+  // Horizonte PFD
+  drawPFD(pfdPitch, pfdRoll);
+
+  // Simulación local si WS no conectado
+  if(!ws || ws.readyState !== WebSocket.OPEN) tickSim(dt);
+
+  updateCamera();
+  renderer.render(scene, camera);
+}
+animate();
+
+// ─── BOTONES PLAY/PAUSE LOCALES ───────────────────────────────────────────────
+document.getElementById('btn-play').addEventListener('click', ()=>{ simRunning=true; sendWS({cmd:'play'}); });
+document.getElementById('btn-pause').addEventListener('click',()=>{ simRunning=false; sendWS({cmd:'pause'}); });
+document.getElementById('btn-reset').addEventListener('click',()=>{ simTime=0; simRunning=true; sendWS({cmd:'seek',time:0}); });
+
+</script>
+</body>
+</html>

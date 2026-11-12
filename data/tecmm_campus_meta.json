@@ -1,0 +1,16 @@
+{
+  "institution": "Instituto Tecnológico José Mario Molina Pasquel y Henríquez — Campus Zapopan",
+  "alias": "TecMM Zapopan / ITS Zapopan",
+  "location": "Camino Arenero #1101, Col. El Bajío, Zapopan, Jalisco",
+  "center_lat": 20.703454068897923,
+  "center_lon": -103.4747314453125,
+  "lat_min": 20.69960024605033,
+  "lat_max": 20.707307891745515,
+  "lon_min": -103.47885131835938,
+  "lon_max": -103.47061157226562,
+  "width_m": 858.73069744693,
+  "height_m": 853.3371170839428,
+  "k_lat": 110713.06996079221,
+  "k_lon": 104218.10182941111,
+  "zoom": 18
+}
