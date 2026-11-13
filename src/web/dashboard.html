@@ -2188,7 +2188,7 @@ function setViewMode(mode){
     const v = App.vehicleRoot ? App.vehicleRoot.position : null;
     const center = (App.missionId==='hardware' && v) ? v.clone() : new THREE.Vector3(0,0,0);
     App.controls.target.copy(center);
-    App.camera.position.set(center.x + 1, 620, center.z + 1);
+    App.camera.position.set(center.x + 1, 900, center.z + 1);
     App.controls.update();
   }
 }
