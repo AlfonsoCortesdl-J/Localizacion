@@ -899,6 +899,8 @@ async function buildCampusScene(data){
       App.campusGroup.add(line);
       App.missionPath = pts;
       App.routeLine = line;
+      const rc = $('route-count');
+      if(rc && !App.editMode) rc.textContent = (mission.waypoints?.length || 0) + ' puntos';
     }
     $('mh-title').textContent = mission.name || 'Inspección autónoma · TecMM Zapopan';
     $('mh-ekf').textContent = fmt(mission.metrics?.ekf_rmse_m,2)+' m';
@@ -2001,7 +2003,8 @@ function updateRoutePreview(){
     App.campusGroup.add(App.editMarkers);
   }
   while(App.editMarkers.children.length > App.editRoute.length){
-    const m = App.editMarkers.children.pop();
+    const m = App.editMarkers.children[App.editMarkers.children.length-1];
+    App.editMarkers.remove(m);
     if(m.geometry) m.geometry.dispose();
     if(m.material) m.material.dispose();
   }
