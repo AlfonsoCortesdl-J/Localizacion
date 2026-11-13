@@ -19,6 +19,10 @@ paquete_avion_fisico.zip
 # Graficas generadas (decenas de MB)
 plots/
 
+# Paquete portable generado
+Localizacion_portable.zip
+Localizacion_portable_*.zip
+
 # IDEs y sistema
 .vscode/
 .idea/
