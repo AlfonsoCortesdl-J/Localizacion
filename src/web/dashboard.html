@@ -424,6 +424,7 @@ const App = {
   trails:{}, show:{gt:true,ekf:true,ins:true,vo:false,vision:false},
   sceneMission:null, campusGroup:null, cessnaGroup:null,
   vehicleRoot:null, cessnaModel:null, grobModel:null, droneModel:null, rotors:[], props:[], navLights:[],
+  droneBeacon:null, droneBeam:null,
   cameraTarget:new THREE.Vector3(0,0,0), cameraPos:new THREE.Vector3(220,180,260),
   clock:null, renderer:null, scene:null, camera:null, controls:null,
   labelSprites:[], missionPath:null, campusBounds:{minX:-430,maxX:430,minZ:-430,maxZ:430},
@@ -1105,6 +1106,32 @@ function buildDroneModel(){
   gimbal.position.set(0,-0.55,0.55); g.add(gimbal);
   const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.2,0.25,12), new THREE.MeshStandardMaterial({color:0x1a2638, metalness:0.8, roughness:0.2}));
   lens.rotation.x = Math.PI/2; lens.position.set(0,-0.55,0.9); g.add(lens);
+  return g;
+}
+
+/* Baliza vertical del dron estimado (telemetría real). */
+function buildDroneBeacon(){
+  const g = new THREE.Group();
+  const beam = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.9, 0.9, 1, 10, 1, true),
+    new THREE.MeshBasicMaterial({color:0xffc857, transparent:true, opacity:0.30, depthWrite:false, side:THREE.DoubleSide})
+  );
+  beam.position.y = -0.5;
+  g.add(beam);
+  const halo = new THREE.Mesh(
+    new THREE.RingGeometry(7, 9.5, 32),
+    new THREE.MeshBasicMaterial({color:0xffc857, side:THREE.DoubleSide, transparent:true, opacity:0.75, depthWrite:false})
+  );
+  halo.rotation.x = -Math.PI/2;
+  halo.position.y = 0.2;
+  g.add(halo);
+  const dot = new THREE.Mesh(new THREE.SphereGeometry(2.4, 12, 10), new THREE.MeshBasicMaterial({color:0xffc857}));
+  dot.position.y = 2.0;
+  g.add(dot);
+  g.visible = false;
+  App.scene.add(g);
+  App.droneBeacon = g;
+  App.droneBeam = beam;
   return g;
 }
 
@@ -2260,6 +2287,7 @@ async function init(){
   // Modelos
   App.droneModel = buildDroneModel();
   App.vehicleRoot.add(App.droneModel);
+  buildDroneBeacon();
   App.grobModel = buildGrobModel();
   App.vehicleRoot.add(App.grobModel);
   const plane = buildCessnaModel();
