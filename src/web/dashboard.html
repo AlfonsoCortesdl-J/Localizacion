@@ -233,24 +233,6 @@
     </div>
   </section>
 
-  <section class="card glass">
-    <h2>Navegación <span class="hint" id="nav-mode">EKF + VIO</span></h2>
-    <div class="row" style="justify-content:space-between">
-      <span class="badge info" id="badge-source">CAMPUS</span>
-      <span class="badge ok" id="badge-gps">GPS LOCK</span>
-      <span class="badge ok" id="badge-vio">VIO OK</span>
-      <span class="badge info" id="badge-rec" style="display:none">REC</span>
-    </div>
-    <div class="tele-grid" style="margin-top:8px">
-      <div class="tele"><div class="k">Error EKF</div><div class="v" style="color:var(--green)"><span id="v-err-ekf">--</span><small>m</small></div></div>
-      <div class="tele"><div class="k">Deriva INS</div><div class="v" style="color:var(--red)"><span id="v-err-ins">--</span><small>m</small></div></div>
-      <div class="tele"><div class="k">Cota 3σ</div><div class="v" style="color:var(--amber)"><span id="v-sigma">--</span><small>m</small></div></div>
-      <div class="tele"><div class="k">Error rumbo</div><div class="v"><span id="v-err-yaw">--</span><small>°</small></div></div>
-      <div class="tele"><div class="k">Satélites</div><div class="v"><span id="v-sats">--</span></div></div>
-      <div class="tele"><div class="k">Batería</div><div class="v"><span id="v-batt">--</span><small>%</small></div></div>
-    </div>
-  </section>
-
   <section class="card glass" id="sim-cameras">
     <h2>Cámaras simuladas <span class="hint">click para ampliar</span></h2>
     <div class="cam-grid">
@@ -271,7 +253,7 @@
 
   <section class="card glass" id="real-cameras" style="display:none">
     <h2>Cámaras reales <span class="hint">ESP32-CAM / webcam</span></h2>
-    <div class="cam-row">
+    <div class="cam-grid">
       <div class="cam" data-cam="real">
         <img id="cam-real" alt="Cámara real 1"/>
         <div class="scan"></div>
@@ -297,6 +279,24 @@
       <button class="btn sm" data-cam-preset="0">Webcam 0</button>
       <button class="btn sm" data-cam-preset="1">Webcam 1</button>
       <button class="btn sm" data-cam-preset="http://192.168.4.1:81/stream">ESP32-CAM</button>
+    </div>
+  </section>
+
+  <section class="card glass">
+    <h2>Navegación <span class="hint" id="nav-mode">EKF + VIO</span></h2>
+    <div class="row" style="justify-content:space-between">
+      <span class="badge info" id="badge-source">CAMPUS</span>
+      <span class="badge ok" id="badge-gps">GPS LOCK</span>
+      <span class="badge ok" id="badge-vio">VIO OK</span>
+      <span class="badge info" id="badge-rec" style="display:none">REC</span>
+    </div>
+    <div class="tele-grid" style="margin-top:8px">
+      <div class="tele"><div class="k">Error EKF</div><div class="v" style="color:var(--green)"><span id="v-err-ekf">--</span><small>m</small></div></div>
+      <div class="tele"><div class="k">Deriva INS</div><div class="v" style="color:var(--red)"><span id="v-err-ins">--</span><small>m</small></div></div>
+      <div class="tele"><div class="k">Cota 3σ</div><div class="v" style="color:var(--amber)"><span id="v-sigma">--</span><small>m</small></div></div>
+      <div class="tele"><div class="k">Error rumbo</div><div class="v"><span id="v-err-yaw">--</span><small>°</small></div></div>
+      <div class="tele"><div class="k">Satélites</div><div class="v"><span id="v-sats">--</span></div></div>
+      <div class="tele"><div class="k">Batería</div><div class="v"><span id="v-batt">--</span><small>%</small></div></div>
     </div>
   </section>
 
