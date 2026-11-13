@@ -102,6 +102,7 @@
   input[type=range]{flex:1;accent-color:var(--cyan)}
   .chk{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--muted);cursor:pointer}
   .chk input{accent-color:var(--cyan)}
+  .route-help{font-size:9px;color:var(--muted);line-height:1.45;margin-bottom:2px}
   /* FORM */
   .form-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
   .form-grid label{display:flex;flex-direction:column;gap:2px;font-size:8px;letter-spacing:.05em;color:var(--muted);text-transform:uppercase}
@@ -115,11 +116,8 @@
   details.proto .code{margin-top:5px}
   .code{font-family:Consolas,monospace;font-size:9px;line-height:1.55;color:#9fc7e8;background:rgba(2,7,13,.75);
     border:1px solid rgba(90,180,230,.14);border-radius:8px;padding:8px;overflow-x:auto;white-space:pre}
-  /* ---------- BOTTOM LEFT: CHARTS ---------- */
-  #charts{
-    position:fixed;left:14px;bottom:14px;width:420px;max-width:calc(100vw - 392px);z-index:50;
-    border-radius:14px;padding:7px 9px 6px;
-  }
+  /* ---------- CHARTS (dentro del dock) ---------- */
+  #charts{width:100%;border-radius:14px;padding:8px 9px 6px}
   #charts .chart-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
   #charts .chart-head span{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);font-weight:800}
   #charts .chart-head .legend{display:flex;gap:8px;font-size:8px;color:var(--muted)}
@@ -127,14 +125,15 @@
   .chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
   .chart-box{background:rgba(3,8,15,.55);border:1px solid rgba(90,180,230,.10);border-radius:7px;padding:3px 4px}
   .chart-box canvas{display:block;width:100%;height:62px}
-  /* ---------- BOTTOM RIGHT: PFD + MINIMAP ---------- */
+  /* ---------- BOTTOM LEFT: PFD + MINIMAP (compactos) ---------- */
   #instruments{
-    position:fixed;right:366px;bottom:14px;z-index:50;display:flex;gap:10px;align-items:flex-end;
+    position:fixed;left:14px;bottom:14px;z-index:50;display:flex;gap:8px;align-items:flex-end;
   }
-  .inst-card{border-radius:14px;padding:8px}
-  .inst-card canvas{display:block;border-radius:9px;background:#02060c}
-  .inst-card .inst-title{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);
-    font-weight:800;margin:0 0 5px 2px}
+  .inst-card{border-radius:12px;padding:5px}
+  .inst-card canvas{display:block;width:150px;height:150px;border-radius:8px;background:#02060c}
+  .inst-card .inst-title{font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--cyan);
+    font-weight:800;margin:0 0 3px 2px;display:flex;justify-content:space-between;gap:6px}
+  .inst-card .inst-title .hint{color:var(--muted);font-weight:500;letter-spacing:.02em;text-transform:none;font-size:8px}
   /* ---------- MODAL ---------- */
   #modal{position:fixed;inset:0;z-index:100;display:none;place-items:center;background:rgba(0,0,0,.78);backdrop-filter:blur(6px)}
   #modal.open{display:grid}
@@ -160,11 +159,11 @@
   #gps-alert.show{display:block}
   @keyframes pulse{from{box-shadow:0 0 0 0 rgba(255,93,115,.35)}to{box-shadow:0 0 0 10px rgba(255,93,115,0)}}
   @media (max-width:1180px){
-    #charts{width:calc(100vw - 392px)}
-    #instruments{display:none}
+    #instruments{transform:scale(.88);transform-origin:bottom left}
   }
   @media (max-width:860px){
     #dock{width:300px}
+    #instruments{display:none}
     #charts{display:none}
     .mission-tabs{display:none}
     .brand{min-width:auto}
@@ -186,8 +185,8 @@
   </div>
   <div class="mission-tabs" id="mission-tabs">
     <button class="mission-tab" data-mission="cessna">Cessna 172</button>
-    <button class="mission-tab active" data-mission="campus">Campus Zapopan</button>
-    <button class="mission-tab" data-mission="hardware">Hardware</button>
+    <button class="mission-tab active" data-mission="campus">Grob 120TP · TSJ</button>
+    <button class="mission-tab" data-mission="hardware">Telemetría real</button>
   </div>
   <div class="top-spacer"></div>
   <div class="top-field">
@@ -252,8 +251,8 @@
     </div>
   </section>
 
-  <section class="card glass">
-    <h2>Cámaras en vivo <span class="hint">click para ampliar</span></h2>
+  <section class="card glass" id="sim-cameras">
+    <h2>Cámaras simuladas <span class="hint">click para ampliar</span></h2>
     <div class="cam-grid">
       <div class="cam" data-cam="nadir">
         <img id="cam-nadir" alt="Cámara nadir"/>
@@ -267,16 +266,32 @@
         <div class="cam-label">CENITAL · STAR TRACKER</div>
         <div class="cam-sub" id="cam-sky-sub">2 FPS</div>
       </div>
+    </div>
+  </section>
+
+  <section class="card glass" id="real-cameras" style="display:none">
+    <h2>Cámaras reales <span class="hint">ESP32-CAM / webcam</span></h2>
+    <div class="cam-row">
       <div class="cam" data-cam="real">
-        <img id="cam-real" alt="Cámara real"/>
+        <img id="cam-real" alt="Cámara real 1"/>
         <div class="scan"></div>
-        <div class="cam-label">REAL · ESP32-CAM / WEBCAM</div>
+        <div class="cam-label">REAL 1</div>
         <div class="cam-sub" id="cam-real-sub">SIN SEÑAL</div>
       </div>
+      <div class="cam" data-cam="real2">
+        <img id="cam-real2" alt="Cámara real 2"/>
+        <div class="scan"></div>
+        <div class="cam-label">REAL 2</div>
+        <div class="cam-sub" id="cam-real2-sub">SIN SEÑAL</div>
+      </div>
     </div>
-    <div class="row" style="margin-top:8px">
-      <input type="text" id="cam-url" placeholder="http://192.168.4.1:81/stream o índice 0" style="flex:1;min-width:0"/>
+    <div class="row" style="margin-top:6px">
+      <input type="text" id="cam-url" placeholder="Cámara 1: URL MJPEG o índice" style="flex:1;min-width:0"/>
       <button class="btn sm primary" id="cam-apply">Aplicar</button>
+    </div>
+    <div class="row">
+      <input type="text" id="cam-url2" placeholder="Cámara 2: URL MJPEG o índice" style="flex:1;min-width:0"/>
+      <button class="btn sm primary" id="cam-apply2">Aplicar</button>
     </div>
     <div class="row">
       <button class="btn sm" data-cam-preset="0">Webcam 0</button>
@@ -308,6 +323,18 @@
       <button class="btn sm" data-view="chase">Persecución</button>
       <button class="btn sm" data-view="cockpit">Cabina</button>
       <button class="btn sm" data-view="top">Cenital</button>
+      <button class="btn sm" data-view="satellite">Satélite</button>
+    </div>
+  </section>
+
+  <section class="card glass" id="route-editor" style="display:none">
+    <h2>Ruta de la simulación <span class="hint" id="route-count">—</span></h2>
+    <div class="route-help">Haz clic en el mapa 3D para añadir puntos. Arrastra para mover la cámara; undo borra el último.</div>
+    <div class="row" style="margin-top:7px">
+      <button class="btn sm primary" id="route-edit">✎ Editar ruta</button>
+      <button class="btn sm" id="route-undo">↶ Deshacer</button>
+      <button class="btn sm danger" id="route-clear">Limpiar</button>
+      <button class="btn sm good" id="route-apply">✓ Aplicar</button>
     </div>
   </section>
 
@@ -341,35 +368,35 @@
 UDP 9876 · mismo JSON por datagrama</div>
     </details>
   </section>
-</aside>
 
-<!-- ================= CHARTS ================= -->
-<div id="charts" class="glass">
-  <div class="chart-head">
-    <span>Telemetría en vivo</span>
-    <div class="legend">
-      <span><i style="background:#3df0a0"></i>EKF</span>
-      <span><i style="background:#ff5d73"></i>INS</span>
-      <span><i style="background:#ffc857"></i>3σ</span>
+  <!-- ================= CHARTS ================= -->
+  <section class="glass" id="charts">
+    <div class="chart-head">
+      <span>Telemetría en vivo</span>
+      <div class="legend">
+        <span><i style="background:#3df0a0"></i>EKF</span>
+        <span><i style="background:#ff5d73"></i>INS</span>
+        <span><i style="background:#ffc857"></i>3σ</span>
+      </div>
     </div>
-  </div>
-  <div class="chart-grid">
-    <div class="chart-box"><canvas id="chart-errors"></canvas></div>
-    <div class="chart-box"><canvas id="chart-alt"></canvas></div>
-    <div class="chart-box"><canvas id="chart-speed"></canvas></div>
-    <div class="chart-box"><canvas id="chart-att"></canvas></div>
-  </div>
-</div>
+    <div class="chart-grid">
+      <div class="chart-box"><canvas id="chart-errors"></canvas></div>
+      <div class="chart-box"><canvas id="chart-alt"></canvas></div>
+      <div class="chart-box"><canvas id="chart-speed"></canvas></div>
+      <div class="chart-box"><canvas id="chart-att"></canvas></div>
+    </div>
+  </section>
+</aside>
 
 <!-- ================= PFD + MINIMAP ================= -->
 <div id="instruments">
   <div class="inst-card glass">
-    <div class="inst-title">PFD</div>
-    <canvas id="pfd" width="230" height="230"></canvas>
+    <div class="inst-title">PFD <span class="hint">actitud</span></div>
+    <canvas id="pfd" width="150" height="150"></canvas>
   </div>
   <div class="inst-card glass">
-    <div class="inst-title">Mapa táctico</div>
-    <canvas id="minimap" width="230" height="230"></canvas>
+    <div class="inst-title">Ruta <span class="hint">mapa</span></div>
+    <canvas id="minimap" width="150" height="150"></canvas>
   </div>
 </div>
 
@@ -396,12 +423,14 @@ const App = {
   history:[], lastHistoryT:-1, chartsDirty:false, lastChartDraw:0,
   trails:{}, show:{gt:true,ekf:true,ins:true,vo:false,vision:false},
   sceneMission:null, campusGroup:null, cessnaGroup:null,
-  vehicleRoot:null, cessnaModel:null, droneModel:null, rotors:[],
+  vehicleRoot:null, cessnaModel:null, grobModel:null, droneModel:null, rotors:[], props:[], navLights:[],
   cameraTarget:new THREE.Vector3(0,0,0), cameraPos:new THREE.Vector3(220,180,260),
   clock:null, renderer:null, scene:null, camera:null, controls:null,
   labelSprites:[], missionPath:null, campusBounds:{minX:-430,maxX:430,minZ:-430,maxZ:430},
-  cessnaBounds:{minX:-2200,maxX:700,minZ:-1800,maxZ:900},
-  lastFrameAt:0, gpsDenied:false, toastTimer:null, sceneLock:0
+  routeLine:null, previewLine:null, editMarkers:null, editMode:false, editRoute:[],
+  cessnaBounds:{minX:-4000,maxX:4000,minZ:-4000,maxZ:4000},
+  lastFrameAt:0, gpsDenied:false, toastTimer:null, sceneToken:0,
+  lastVehiclePos:new THREE.Vector3()
 };
 
 const $ = id => document.getElementById(id);
@@ -475,13 +504,47 @@ function onResize(){
 function animate(){
   requestAnimationFrame(animate);
   const dt = Math.min(0.1, App.clock.getDelta());
-  if(App.viewMode !== 'orbit') updateCameraMode(dt);
-  else App.controls.update();
+  const vehicle = App.vehicleRoot ? App.vehicleRoot.position : null;
 
-  // Rotores del dron
+  const freeView = (App.viewMode === 'orbit' || App.viewMode === 'satellite');
+  if(!freeView){
+    updateCameraMode(dt);
+  }else{
+    // Vista libre: órbita acompaña a los aviones; satélite deja explorar el mapa.
+    if(App.viewMode === 'orbit' && vehicle && (App.missionId==='cessna' || App.missionId==='campus')){
+      const delta = vehicle.clone().sub(App.lastVehiclePos);
+      if(delta.lengthSq() < 1e6) App.camera.position.add(delta);
+      App.controls.target.copy(vehicle);
+    }
+    App.controls.update();
+  }
+  if(vehicle) App.lastVehiclePos.copy(vehicle);
+
+  // Baliza del dron en telemetría real (visible desde la vista satelital)
+  if(App.droneBeacon){
+    App.droneBeacon.visible = App.missionId === 'hardware';
+    if(App.droneBeacon.visible && vehicle){
+      App.droneBeacon.position.copy(vehicle);
+      const h = Math.max(1, vehicle.y);
+      if(App.droneBeam){
+        App.droneBeam.scale.y = h;
+        App.droneBeam.position.y = -h/2;
+      }
+    }
+  }
+
+  // Rotores del dron y hélices de los aviones
   App.rotors.forEach((r,i)=>{ r.rotation.y += dt * (22 + i*3); });
+  App.props.forEach((p,i)=>{ p.rotation.z += dt * (34 + i*4); });
 
-  // Animación de etiquetas (siempre de cara a cámara es automático en Sprite)
+  // Luces de navegación intermitentes
+  const now = performance.now()*0.001;
+  App.navLights.forEach((l,i)=>{
+    if(!l) return;
+    const on = Math.sin(now*7 + i*Math.PI) > 0.2;
+    l.material.color.setHex(on ? l.userData.on : l.userData.off);
+  });
+
   App.renderer.render(App.scene, App.camera);
 }
 
@@ -713,6 +776,9 @@ function addRoofDetails(group, b, h, pal, idx){
 async function buildCampusScene(data){
   clearGroup(App.campusGroup);
   App.labelSprites = [];
+  App.routeLine = null;
+  App.previewLine = null;
+  App.editMarkers = null;
   const meta = data.meta || {};
   const W = Number(meta.width_m || 858.7), H = Number(meta.height_m || 853.3);
   App.campusBounds = {minX:-W/2, maxX:W/2, minZ:-H/2, maxZ:H/2};
@@ -740,7 +806,7 @@ async function buildCampusScene(data){
     const mesh = flatPolygon(p.polygon, 0x1f5c3a, 0.09, 0.95);
     App.campusGroup.add(mesh);
     const border = new THREE.LineLoop(
-      new THREE.BufferGeometry().setFromPoints(p.polygon.map(pt=>new THREE.Vector3(pt[0],0.12,-pt[1]))),
+      new THREE.BufferGeometry().setFromPoints(p.polygon.map(pt=>new THREE.Vector3(pt[0],0.12,pt[1]))),
       new THREE.LineBasicMaterial({color:0xd8f5e6, transparent:true, opacity:0.55})
     );
     App.campusGroup.add(border);
@@ -805,7 +871,7 @@ async function buildCampusScene(data){
     if(name && name !== 'Edificio' && name !== '?' && idx < 22){
       const sprite = makeTextSprite(shortName(name), {color:'#e8f4ff', border:'rgba(56,217,255,.55)', scale:46});
       const c = b.centroid || [0,0];
-      sprite.position.set(c[0], h + 16, -c[1]);
+      sprite.position.set(c[0], h + 16, c[1]);
       App.campusGroup.add(sprite);
       App.labelSprites.push(sprite);
     }
@@ -817,7 +883,7 @@ async function buildCampusScene(data){
   // Puntos de interés
   (data.pois||[]).forEach(p=>{
     const sprite = makeTextSprite(p.name, {color:'#b6ff5c', border:'rgba(182,255,92,.5)', scale:42});
-    sprite.position.set(p.x, 24, -p.z);
+    sprite.position.set(p.x, 24, p.z);
     App.campusGroup.add(sprite);
   });
 
@@ -826,12 +892,13 @@ async function buildCampusScene(data){
     const mission = await fetchJSON('/api/mission?name=campus');
     App.missionData = mission;
     if(mission.waypoints && mission.waypoints.length){
-      const pts = mission.waypoints.map(w=>new THREE.Vector3(w.x, 2, -w.z));
+      const pts = mission.waypoints.map(w=>new THREE.Vector3(w.x, 2, w.z));
       const geo = new THREE.BufferGeometry().setFromPoints(pts);
       const line = new THREE.Line(geo, new THREE.LineDashedMaterial({color:0x38d9ff, dashSize:14, gapSize:10, transparent:true, opacity:0.55}));
       line.computeLineDistances();
       App.campusGroup.add(line);
       App.missionPath = pts;
+      App.routeLine = line;
     }
     $('mh-title').textContent = mission.name || 'Inspección autónoma · TecMM Zapopan';
     $('mh-ekf').textContent = fmt(mission.metrics?.ekf_rmse_m,2)+' m';
@@ -868,9 +935,9 @@ function buildTrees(trees){
   const dummy = new THREE.Object3D();
   trees.forEach((t,i)=>{
     const [x,z,r,h] = t;
-    dummy.position.set(x, 2, -z); dummy.scale.set(1,1,1); dummy.updateMatrix();
+    dummy.position.set(x, 2, z); dummy.scale.set(1,1,1); dummy.updateMatrix();
     trunks.setMatrixAt(i, dummy.matrix);
-    dummy.position.set(x, 4 + h*0.5, -z);
+    dummy.position.set(x, 4 + h*0.5, z);
     dummy.scale.set(r, h, r); dummy.updateMatrix();
     crowns.setMatrixAt(i, dummy.matrix);
   });
@@ -881,93 +948,117 @@ function buildTrees(trees){
 /* =========================================================================
    ESCENA CESSNA
    ========================================================================= */
+/* Terreno del circuito original: relieve, cañón, balizas y puertas. */
+function getTerrainElevation(x, z){
+  let h = 0.0;
+  const d1 = Math.hypot(x - 900, z - 600);
+  h += 460 * Math.exp(-Math.pow(d1 / 600, 2));
+  const d1b = Math.hypot(x - 1200, z - 100);
+  h += 340 * Math.exp(-Math.pow(d1b / 500, 2));
+  const d2 = Math.hypot(x - (-450), z - 500);
+  h += 380 * Math.exp(-Math.pow(d2 / 500, 2));
+  const d2b = Math.hypot(x - (-300), z - (-200));
+  h += 290 * Math.exp(-Math.pow(d2b / 450, 2));
+  const d3 = Math.hypot(x - (-350), z - 1950);
+  h += 390 * Math.exp(-Math.pow(d3 / 650, 2));
+  h += 35 * Math.sin(x * 0.003) * Math.cos(z * 0.003);
+  h += 20 * Math.sin(x * 0.006 + 1.2) * Math.sin(z * 0.006);
+  if(x >= -500 && x <= 500 && z >= -300 && z <= 1500){
+    const valleFactor = Math.exp(-Math.pow((x - 250) / 280, 2));
+    h = h * (1.0 - 0.70 * valleFactor) + 55.0 * (0.70 * valleFactor);
+  }else if(x < -500 && z >= 900 && z <= 1600){
+    const valleFactor = Math.exp(-Math.pow((z - 1250) / 250, 2));
+    h = h * (1.0 - 0.65 * valleFactor) + 45.0 * (0.65 * valleFactor);
+  }
+  return Math.max(12.0, h);
+}
+
+function createCanyonGate(x, y, z, rotY, text, colorHex){
+  const group = new THREE.Group();
+  group.position.set(x, y, z);
+  group.rotation.y = rotY;
+  const curve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(-140, 0, 0), new THREE.Vector3(-110, 140, 0),
+    new THREE.Vector3(0, 180, 0), new THREE.Vector3(110, 140, 0),
+    new THREE.Vector3(140, 0, 0)
+  ]);
+  const arch = new THREE.Mesh(
+    new THREE.TubeGeometry(curve, 28, 4, 8, false),
+    new THREE.MeshBasicMaterial({color: colorHex})
+  );
+  group.add(arch);
+  const light = new THREE.PointLight(colorHex, 2.0, 450);
+  light.position.set(0, 180, 0);
+  group.add(light);
+  const border = '#' + colorHex.toString(16).padStart(6, '0');
+  const label = makeTextSprite(text, {color:'#ffffff', bg:'rgba(15,23,42,.92)', border, scale:220});
+  label.position.set(0, 215, 0);
+  label.scale.set(250, 62, 1);
+  label.material.depthTest = false;
+  group.add(label);
+  App.cessnaGroup.add(group);
+}
+
 async function buildCessnaScene(data){
   clearGroup(App.cessnaGroup);
   App.labelSprites = [];
-  const W = Number(data.width_m||8000), H = Number(data.height_m||8000);
+  const W = Number(data.width_m || 8000), H = Number(data.height_m || 8000);
   const tex = await loadTexture(data.map || '/data/reference_map.png');
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = App.renderer.capabilities.getMaxAnisotropy();
-  const geo = new THREE.PlaneGeometry(W,H,1,1);
-  geo.rotateX(-Math.PI/2);
-  const mat = new THREE.MeshStandardMaterial({map:tex, roughness:0.96, metalness:0.0});
-  const ground = new THREE.Mesh(geo,mat);
+
+  // Terreno con relieve (idéntico al simulador original)
+  const SEGMENTS = 180;
+  const groundGeo = new THREE.PlaneGeometry(W, H, SEGMENTS, SEGMENTS);
+  const posAttr = groundGeo.attributes.position;
+  for(let i=0;i<posAttr.count;i++){
+    const wx = posAttr.getX(i);
+    const wz = -posAttr.getY(i);
+    posAttr.setZ(i, getTerrainElevation(wx, wz));
+  }
+  groundGeo.computeVertexNormals();
+  const ground = new THREE.Mesh(
+    groundGeo,
+    new THREE.MeshStandardMaterial({map:tex, roughness:0.86, metalness:0.08})
+  );
+  ground.rotation.x = -Math.PI/2;
   ground.receiveShadow = true;
   App.cessnaGroup.add(ground);
 
-  // Rejilla tenue de referencia métrica
-  const grid = new THREE.GridHelper(Math.max(W,H), 80, 0x2a4a63, 0x183044);
-  grid.position.y = 0.05;
-  grid.material.transparent = true; grid.material.opacity = 0.16;
+  // Cuadrícula de referencia
+  const grid = new THREE.GridHelper(W, 16, 0x38bdf8, 0x1e293b);
+  grid.position.y = 10;
+  grid.material.transparent = true; grid.material.opacity = 0.35;
   App.cessnaGroup.add(grid);
 
-  const offset = Number(data.alt_offset_m ?? 380);
-  const start = data.start || [0,0,500];
-  const heading = Number(data.start_heading ?? 90);
-  const path = data.path || [];
+  // Balizas de montañas
+  const m1 = makeTextSprite('MACIZO MONTAÑOSO · 460 m', {color:'#f8fafc', bg:'rgba(15,23,42,.92)', border:'#eab308', scale:240});
+  m1.position.set(900, 495, 600); m1.scale.set(270,68,1); m1.material.depthTest = false;
+  App.cessnaGroup.add(m1);
+  const m2 = makeTextSprite('CERRO OCCIDENTAL · 380 m', {color:'#f8fafc', bg:'rgba(15,23,42,.92)', border:'#38bdf8', scale:240});
+  m2.position.set(-450, 415, 500); m2.scale.set(270,68,1); m2.material.depthTest = false;
+  App.cessnaGroup.add(m2);
 
-  // Ruta planificada del circuito (línea discontinua + proyección en el terreno)
-  if(path.length > 1){
-    const pts = path.map(p=>new THREE.Vector3(p[0], (p[2]||0)-offset, p[1]));
-    const line = new THREE.Line(
-      new THREE.BufferGeometry().setFromPoints(pts),
-      new THREE.LineDashedMaterial({color:0x38d9ff, dashSize:55, gapSize:38, transparent:true, opacity:0.55})
-    );
-    line.computeLineDistances();
-    App.cessnaGroup.add(line);
-    const shadow = new THREE.Line(
-      new THREE.BufferGeometry().setFromPoints(pts.map(p=>new THREE.Vector3(p.x, 2.0, p.z))),
-      new THREE.LineBasicMaterial({color:0x38d9ff, transparent:true, opacity:0.22})
-    );
-    App.cessnaGroup.add(shadow);
-  }
+  // Puertas del cañón y corredor GPS-denied
+  createCanyonGate(410, 60, -110, 0.45, 'ENTRADA AL CAÑÓN · GPS OUTAGE', 0xef4444);
+  createCanyonGate(-830, 45, 1260, -0.75, 'SALIDA DEL CAÑÓN · GPS OK', 0x22c55e);
 
-  // Pista de aterrizaje en el punto real de despegue
-  const rwGroup = new THREE.Group();
-  rwGroup.position.set(start[0], 0.55, start[1]);
-  rwGroup.rotation.y = -rad(heading);
-  const rwGeo = new THREE.PlaneGeometry(42, 900);
-  rwGeo.rotateX(-Math.PI/2);
-  const runway = new THREE.Mesh(rwGeo, new THREE.MeshStandardMaterial({color:0x32373d, roughness:0.95}));
-  rwGroup.add(runway);
-  const thrMat = new THREE.MeshBasicMaterial({color:0xe8eef7});
-  for(let i=-4;i<=4;i++){
-    const stripe = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 26), thrMat);
-    stripe.rotation.x = -Math.PI/2;
-    stripe.position.set(0, 0.2, i*92);
-    rwGroup.add(stripe);
-  }
-  for(const s of [-1,1]){
-    const edge = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 900), thrMat);
-    edge.rotation.x = -Math.PI/2;
-    edge.position.set(s*20, 0.2, 0);
-    rwGroup.add(edge);
-  }
-  App.cessnaGroup.add(rwGroup);
+  const canyonPath = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(410, 120, -110), new THREE.Vector3(390, 120, 250),
+    new THREE.Vector3(335, 110, 610), new THREE.Vector3(260, 100, 1050),
+    new THREE.Vector3(0, 95, 1450), new THREE.Vector3(-450, 90, 1380),
+    new THREE.Vector3(-830, 80, 1260)
+  ]);
+  const corridor = new THREE.Mesh(
+    new THREE.TubeGeometry(canyonPath, 64, 55, 12, false),
+    new THREE.MeshBasicMaterial({color:0xef4444, transparent:true, opacity:0.10, wireframe:true})
+  );
+  App.cessnaGroup.add(corridor);
 
-  // Puertas del circuito alineadas con la trayectoria real
-  const gateMat = new THREE.MeshBasicMaterial({color:0x38d9ff, transparent:true, opacity:0.55, side:THREE.DoubleSide});
-  const gateRingMat = new THREE.MeshBasicMaterial({color:0xb6ff5c, transparent:true, opacity:0.30, side:THREE.DoubleSide});
-  (data.gates||[]).forEach(g=>{
-    const y = (g.alt||0) - offset;
-    const torus = new THREE.Mesh(new THREE.TorusGeometry(46, 1.9, 8, 44), gateMat);
-    torus.position.set(g.x, y, g.z);
-    torus.rotation.y = -rad(g.yaw||0);
-    App.cessnaGroup.add(torus);
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(46, 0.6, 6, 44), gateRingMat);
-    ring.position.copy(torus.position);
-    ring.rotation.copy(torus.rotation);
-    ring.scale.setScalar(1.10);
-    App.cessnaGroup.add(ring);
-  });
-
-  App.cessnaBounds = data.bounds || {minX:-2200,maxX:700,minZ:-1800,maxZ:900};
+  App.cessnaBounds = {minX:-4000, maxX:4000, minZ:-4000, maxZ:4000};
   if(App.viewMode==='orbit'){
-    const b = App.cessnaBounds;
-    const cx=(b.minX+b.maxX)/2, cz=(b.minZ+b.maxZ)/2;
-    const span = Math.max(b.maxX-b.minX, b.maxZ-b.minZ, 900);
-    App.controls.target.set(cx, 240, cz);
-    App.camera.position.set(cx + span*0.55, span*0.62, cz + span*0.80);
+    App.camera.position.set(900, 720, 1200);
+    App.controls.target.set(0, 150, 0);
     App.controls.update();
   }
 }
@@ -1022,9 +1113,23 @@ function buildCessnaModel(){
     const model = gltf.scene;
     // El GLB tiene la nariz en -X; se alinea con -Z (frente de la escena).
     model.rotation.y = -Math.PI/2;
-    model.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; } });
+    model.traverse(o=>{
+      if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; }
+      if(o.name && /prop|propel|spinner|helice/i.test(o.name)) App.props.push(o);
+    });
     g.add(model);
     App.cessnaModel = model;
+
+    // Luces de navegación en las puntas de ala
+    const bulbGeo = new THREE.SphereGeometry(0.14, 8, 8);
+    const left = new THREE.Mesh(bulbGeo, new THREE.MeshBasicMaterial({color:0xef4444}));
+    left.position.set(-5.5, 0.72, 0);
+    left.userData = {on:0xef4444, off:0x7f1d1d};
+    const right = new THREE.Mesh(bulbGeo, new THREE.MeshBasicMaterial({color:0x22c55e}));
+    right.position.set(5.5, 0.72, 0);
+    right.userData = {on:0x22c55e, off:0x14532d};
+    g.add(left, right);
+    App.navLights.push(left, right);
   }, undefined, err=>{
     console.warn('No se pudo cargar c172.glb; se usa un modelo simple.', err);
     const body = new THREE.Mesh(new THREE.BoxGeometry(1.2,1.1,7.5), new THREE.MeshStandardMaterial({color:0xd8e2ee, roughness:0.5, metalness:0.2}));
@@ -1035,6 +1140,122 @@ function buildCessnaModel(){
     g.add(body,wing,tail);
     App.cessnaModel = g;
   });
+  return g;
+}
+
+/* Grob 120TP: entrenador monomotor de ala baja (modelo procedural). */
+function buildGrobModel(){
+  const g = new THREE.Group();
+  const white = new THREE.MeshStandardMaterial({color:0xf2f5f9, roughness:0.42, metalness:0.28});
+  const blue = new THREE.MeshStandardMaterial({color:0x1d4f9c, roughness:0.45, metalness:0.35});
+  const red = new THREE.MeshStandardMaterial({color:0xc62828, roughness:0.5, metalness:0.2});
+  const dark = new THREE.MeshStandardMaterial({color:0x1a2638, roughness:0.18, metalness:0.75});
+  const glass = new THREE.MeshStandardMaterial({color:0x2b5a7a, roughness:0.08, metalness:0.55, transparent:true, opacity:0.82});
+
+  // Fuselaje (eje -Z = nariz)
+  const fuselage = new THREE.Mesh(new THREE.CylinderGeometry(0.58, 0.34, 7.6, 14), white);
+  fuselage.rotation.x = Math.PI/2;
+  fuselage.castShadow = true;
+  g.add(fuselage);
+
+  // Morro y carenado del motor
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(0.58, 1.2, 14), white);
+  nose.rotation.x = -Math.PI/2;
+  nose.position.z = -4.35;
+  nose.castShadow = true;
+  g.add(nose);
+  const spinner = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.55, 12), red);
+  spinner.rotation.x = -Math.PI/2;
+  spinner.position.z = -5.0;
+  g.add(spinner);
+
+  // Hélice de tres palas (geometría desplazada desde el buje)
+  const prop = new THREE.Group();
+  prop.position.z = -5.12;
+  const bladeGeo = new THREE.BoxGeometry(0.09, 1.5, 0.04);
+  bladeGeo.translate(0, 0.75, 0);   // la pala nace en el buje y se extiende hacia afuera
+  for(let i=0;i<3;i++){
+    const blade = new THREE.Mesh(bladeGeo, dark);
+    blade.rotation.z = i * Math.PI*2/3;
+    prop.add(blade);
+  }
+  g.add(prop);
+  App.props.push(prop);
+
+  // Ala baja con diedro
+  for(const side of [-1,1]){
+    const wing = new THREE.Mesh(new THREE.BoxGeometry(5.1, 0.16, 1.45), white);
+    wing.position.set(side*2.6, 0.02, -0.5);
+    wing.rotation.z = side * rad(2.2);
+    wing.castShadow = true;
+    g.add(wing);
+    const tip = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.18, 1.45), blue);
+    tip.position.set(side*5.05, 0.12, -0.5);
+    tip.rotation.z = side * rad(2.2);
+    g.add(tip);
+    // Luces de navegación
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.10,8,8), new THREE.MeshBasicMaterial({color: side<0?0xef4444:0x22c55e}));
+    bulb.position.set(side*5.1, 0.14, -0.5);
+    bulb.userData = {on: side<0?0xef4444:0x22c55e, off: side<0?0x7f1d1d:0x14532d};
+    g.add(bulb);
+    App.navLights.push(bulb);
+  }
+
+  // Franja azul del fuselaje
+  const stripe = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.22, 6.2), blue);
+  stripe.position.set(0, -0.02, 0.2);
+  g.add(stripe);
+
+  // Cabina
+  const canopy = new THREE.Mesh(new THREE.SphereGeometry(0.62, 16, 12, 0, Math.PI*2, 0, Math.PI/2), glass);
+  canopy.position.set(0, 0.46, -1.5);
+  canopy.scale.set(0.92, 0.85, 2.35);
+  g.add(canopy);
+  const canopyFrame = new THREE.Mesh(new THREE.TorusGeometry(0.56, 0.035, 6, 18, Math.PI), dark);
+  canopyFrame.position.set(0, 0.5, -0.35);
+  canopyFrame.rotation.y = Math.PI/2;
+  g.add(canopyFrame);
+
+  // Cola
+  const fin = new THREE.Mesh(new THREE.BoxGeometry(0.14, 1.75, 1.15), white);
+  fin.position.set(0, 0.95, 3.45);
+  fin.rotation.x = rad(-8);
+  fin.castShadow = true;
+  g.add(fin);
+  const finTip = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.42, 1.2), red);
+  finTip.position.set(0, 1.75, 3.45);
+  g.add(finTip);
+  const stab = new THREE.Mesh(new THREE.BoxGeometry(3.3, 0.12, 0.95), white);
+  stab.position.set(0, 0.35, 3.55);
+  stab.castShadow = true;
+  g.add(stab);
+  for(const side of [-1,1]){
+    const elev = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.10, 0.55), blue);
+    elev.position.set(side*0.85, 0.35, 3.85);
+    g.add(elev);
+  }
+
+  // Tren de aterrizaje
+  const strutMat = new THREE.MeshStandardMaterial({color:0x8a97a6, roughness:0.6, metalness:0.5});
+  const wheelMat = new THREE.MeshStandardMaterial({color:0x14181d, roughness:0.9});
+  for(const side of [-1,1]){
+    const strut = new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,0.75,6), strutMat);
+    strut.position.set(side*1.15, -0.45, -0.35);
+    g.add(strut);
+    const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.24,0.24,0.14,12), wheelMat);
+    wheel.rotation.z = Math.PI/2;
+    wheel.position.set(side*1.15, -0.82, -0.35);
+    g.add(wheel);
+  }
+  const noseStrut = new THREE.Mesh(new THREE.CylinderGeometry(0.045,0.045,0.55,6), strutMat);
+  noseStrut.position.set(0, -0.4, -3.7);
+  g.add(noseStrut);
+  const noseWheel = new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.18,0.12,12), wheelMat);
+  noseWheel.rotation.z = Math.PI/2;
+  noseWheel.position.set(0, -0.7, -3.7);
+  g.add(noseWheel);
+
+  g.traverse(o=>{ if(o.isMesh) o.castShadow = true; });
   return g;
 }
 
@@ -1102,12 +1323,13 @@ function applyState(data){
   App.state = data;
   App.lastFrameAt = performance.now();
   const v = data.vehicle;
-  const isCessna = data.mission === 'cessna';
+  const mission = App.missionId;
+  const isCessna = mission === 'cessna';
+  const isCampus = mission === 'campus';
+  const isHardware = mission === 'hardware';
 
-  // Cambio automático de escena si el hub cambia de misión (con bloqueo tras un cambio manual).
-  if(App.sceneMission && data.mission && data.mission !== App.sceneMission && data.mission !== 'hardware' && performance.now() > App.sceneLock){
-    switchSceneForMission(data.mission, false);
-  }
+  // La escena solo cambia cuando el usuario pulsa una misión.
+  // Los paquetes de telemetría nunca provocan saltos de escena.
 
   // Posición y actitud
   App.vehicleRoot.position.set(v.x||0, v.y||0, v.z||0);
@@ -1115,7 +1337,11 @@ function applyState(data){
   App.vehicleRoot.rotation.y = -rad(v.yaw||0);
   App.vehicleRoot.rotation.z = -rad(v.roll||0);
   if(App.cessnaModel) App.cessnaModel.visible = isCessna;
-  if(App.droneModel) App.droneModel.visible = !isCessna;
+  if(App.grobModel) App.grobModel.visible = isCampus;
+  if(App.droneModel){
+    App.droneModel.visible = isHardware;
+    App.droneModel.scale.setScalar(isHardware ? 5 : 1);
+  }
 
   // Trayectorias
   const e = data.estimates || {};
@@ -1149,16 +1375,17 @@ function updateHUD(d){
   $('v-err-yaw').textContent = fmt(er.fused_yaw_deg,2);
   $('v-sats').textContent = h.sats ?? '--';
   $('v-batt').textContent = fmt(h.battery,0);
-  $('veh-kind').textContent = d.mission==='cessna' ? 'AVIÓN' : (d.mission==='hardware'?'HARDWARE':'DRON');
-  $('nav-mode').textContent = d.mission==='cessna' ? 'EKF + VO/TRN' : 'VIO + EKF';
-  $('badge-source').textContent = (d.source||'--').toUpperCase();
   const gps = !!h.gps;
   App.gpsDenied = !gps;
+  const mission = App.missionId;
+  $('veh-kind').textContent = mission==='cessna' ? 'AVIÓN · CESSNA 172' : (mission==='campus' ? 'AVIÓN · GROB 120TP' : 'DRON REAL');
+  $('nav-mode').textContent = mission==='cessna' ? 'EKF + VO/TRN' : (mission==='campus' ? 'VIO + EKF' : 'TELEMETRÍA + CÁMARAS');
+  $('badge-source').textContent = (d.source||'--').toUpperCase();
   $('badge-gps').textContent = gps ? 'GPS LOCK' : 'GPS DENEGADO';
   $('badge-gps').className = 'badge ' + (gps?'ok':'bad');
-  $('badge-vio').textContent = d.mission==='campus' ? 'VIO OK' : (gps?'VISIÓN OK':'VIO ACTIVO');
+  $('badge-vio').textContent = mission==='campus' ? 'VIO OK' : (mission==='hardware' ? 'EN LÍNEA' : (gps?'VISIÓN OK':'VIO ACTIVO'));
   $('badge-vio').className = 'badge ' + (gps?'ok':'warn');
-  $('gps-alert').classList.toggle('show', !gps && d.mission!=='cessna');
+  $('gps-alert').classList.toggle('show', !gps && mission!=='cessna');
   $('mh-time').textContent = fmt(d.sim_time,1)+' s';
 }
 
@@ -1291,6 +1518,8 @@ function drawPFD(d){
   const canvas = $('pfd'); if(!canvas) return;
   const ctx = canvas.getContext('2d');
   const W=canvas.width, H=canvas.height, cx=W/2, cy=H/2;
+  const k = Math.min(W,H)/230;           // escala geométrica (230 = diseño original)
+  const fs = n => Math.max(6, Math.round(n*k));
   const v = d.vehicle||{};
   const roll = Number(v.roll||0), pitch = Number(v.pitch||0), yaw = Number(v.yaw||0);
   ctx.clearRect(0,0,W,H);
@@ -1300,7 +1529,7 @@ function drawPFD(d){
   ctx.save();
   ctx.translate(cx,cy);
   ctx.rotate(-rad(roll));
-  const pitchPx = clamp(pitch*3.2,-90,90);
+  const pitchPx = clamp(pitch*3.2*k,-90*k,90*k);
   ctx.translate(0,pitchPx);
   // Cielo / tierra
   const gradSky = ctx.createLinearGradient(0,-H,0,0);
@@ -1309,35 +1538,35 @@ function drawPFD(d){
   const gradGnd = ctx.createLinearGradient(0,0,0,H);
   gradGnd.addColorStop(0,'#7a4a1f'); gradGnd.addColorStop(1,'#3d2410');
   ctx.fillStyle=gradGnd; ctx.fillRect(-W,0,W*2,H);
-  ctx.strokeStyle='#e8f4ff'; ctx.lineWidth=2;
+  ctx.strokeStyle='#e8f4ff'; ctx.lineWidth=Math.max(1,2*k);
   ctx.beginPath(); ctx.moveTo(-W,0); ctx.lineTo(W,0); ctx.stroke();
   // Escala de cabeceo
   ctx.strokeStyle='rgba(232,244,255,.75)'; ctx.fillStyle='rgba(232,244,255,.75)';
-  ctx.font='9px Consolas'; ctx.textAlign='center';
+  ctx.font=`${fs(9)}px Consolas`; ctx.textAlign='center';
   for(let p=-30;p<=30;p+=10){
     if(p===0) continue;
-    const y = -p*3.2;
-    const half = p%20===0?42:24;
-    ctx.lineWidth=1.2;
+    const y = -p*3.2*k;
+    const half = (p%20===0?42:24)*k;
+    ctx.lineWidth=Math.max(.7,1.2*k);
     ctx.beginPath(); ctx.moveTo(-half,y); ctx.lineTo(half,y); ctx.stroke();
-    ctx.fillText(String(p), half+15, y+3);
+    ctx.fillText(String(p), half+15*k, y+3*k);
   }
   ctx.restore();
 
   // Símbolo fijo de aeronave
-  ctx.strokeStyle='#ffc857'; ctx.lineWidth=3;
+  ctx.strokeStyle='#ffc857'; ctx.lineWidth=Math.max(1.5,3*k);
   ctx.beginPath();
-  ctx.moveTo(cx-52,cy); ctx.lineTo(cx-18,cy); ctx.lineTo(cx-8,cy+9);
-  ctx.moveTo(cx+52,cy); ctx.lineTo(cx+18,cy); ctx.lineTo(cx+8,cy+9);
-  ctx.moveTo(cx,cy-6); ctx.lineTo(cx,cy+6);
+  ctx.moveTo(cx-52*k,cy); ctx.lineTo(cx-18*k,cy); ctx.lineTo(cx-8*k,cy+9*k);
+  ctx.moveTo(cx+52*k,cy); ctx.lineTo(cx+18*k,cy); ctx.lineTo(cx+8*k,cy+9*k);
+  ctx.moveTo(cx,cy-6*k); ctx.lineTo(cx,cy+6*k);
   ctx.stroke();
 
   // Arco de banqueo
-  ctx.strokeStyle='rgba(232,244,255,.8)'; ctx.lineWidth=1.5;
-  ctx.beginPath(); ctx.arc(cx,cy,Math.min(W,H)/2-13,rad(-60),rad(60)); ctx.stroke();
+  ctx.strokeStyle='rgba(232,244,255,.8)'; ctx.lineWidth=Math.max(1,1.5*k);
+  ctx.beginPath(); ctx.arc(cx,cy,Math.min(W,H)/2-13*k,rad(-60),rad(60)); ctx.stroke();
   for(const a of [-60,-45,-30,-20,-10,0,10,20,30,45,60]){
-    const len = (a%30===0)?8:4;
-    const r0 = Math.min(W,H)/2-13, r1 = r0-len;
+    const len = (a%30===0?8:4)*k;
+    const r0 = Math.min(W,H)/2-13*k, r1 = r0-len;
     const aa = rad(a-90);
     ctx.beginPath();
     ctx.moveTo(cx+Math.cos(aa)*r0, cy+Math.sin(aa)*r0);
@@ -1347,16 +1576,16 @@ function drawPFD(d){
   // Indicador de banqueo
   ctx.save(); ctx.translate(cx,cy); ctx.rotate(-rad(roll));
   ctx.fillStyle='#ffc857';
-  ctx.beginPath(); ctx.moveTo(0,-Math.min(W,H)/2+13); ctx.lineTo(-7,-Math.min(W,H)/2+24); ctx.lineTo(7,-Math.min(W,H)/2+24); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(0,-Math.min(W,H)/2+13*k); ctx.lineTo(-7*k,-Math.min(W,H)/2+24*k); ctx.lineTo(7*k,-Math.min(W,H)/2+24*k); ctx.closePath(); ctx.fill();
   ctx.restore();
 
   ctx.restore();
 
   // Caja de rumbo
   ctx.fillStyle='rgba(2,7,13,.9)'; ctx.strokeStyle='rgba(56,217,255,.5)'; ctx.lineWidth=1;
-  roundRect(ctx,cx-34,5,68,20,5); ctx.fill(); ctx.stroke();
-  ctx.fillStyle='#e8f4ff'; ctx.font='700 12px Consolas'; ctx.textAlign='center';
-  ctx.fillText(String(Math.round(yaw)).padStart(3,'0')+'°',cx,19);
+  roundRect(ctx,cx-34*k,5*k,68*k,20*k,5*k); ctx.fill(); ctx.stroke();
+  ctx.fillStyle='#e8f4ff'; ctx.font=`700 ${fs(12)}px Consolas`; ctx.textAlign='center';
+  ctx.fillText(String(Math.round(yaw)).padStart(3,'0')+'°',cx,19*k);
   // Borde
   ctx.strokeStyle='rgba(56,217,255,.55)'; ctx.lineWidth=2;
   ctx.beginPath(); ctx.arc(cx,cy,Math.min(W,H)/2-2,0,Math.PI*2); ctx.stroke();
@@ -1372,9 +1601,36 @@ function drawMinimap(d){
   ctx.clearRect(0,0,W,H);
   ctx.fillStyle='#03080f'; ctx.fillRect(0,0,W,H);
 
-  const isCessna = d.mission==='cessna';
-  const bounds = isCessna ? {minX:-2200,maxX:700,minZ:-1800,maxZ:900} : App.campusBounds;
-  const pad = 14;
+  const mission = App.missionId;
+  const isCessna = mission==='cessna';
+  const isHardware = mission==='hardware';
+  let bounds;
+  if(isCessna){
+    bounds = App.cessnaBounds;
+  }else if(isHardware){
+    // Ajuste automático al alcance real de la telemetría.
+    let minX=Infinity, maxX=-Infinity, minZ=Infinity, maxZ=-Infinity;
+    const tr = App.trails.gt;
+    if(tr && tr.count>1){
+      for(let i=0;i<tr.count;i++){
+        const x=tr.positions[i*3], z=tr.positions[i*3+2];
+        minX=Math.min(minX,x); maxX=Math.max(maxX,x);
+        minZ=Math.min(minZ,z); maxZ=Math.max(maxZ,z);
+      }
+    }
+    const vv = d.vehicle||{};
+    minX=Math.min(minX, vv.x||0); maxX=Math.max(maxX, vv.x||0);
+    minZ=Math.min(minZ, vv.z||0); maxZ=Math.max(maxZ, vv.z||0);
+    if(!isFinite(minX) || (maxX-minX)<80 || (maxZ-minZ)<80){
+      minX=(vv.x||0)-180; maxX=(vv.x||0)+180;
+      minZ=(vv.z||0)-180; maxZ=(vv.z||0)+180;
+    }
+    const mx=(maxX-minX)*0.12+20, mz=(maxZ-minZ)*0.12+20;
+    bounds={minX:minX-mx,maxX:maxX+mx,minZ:minZ-mz,maxZ:maxZ+mz};
+  }else{
+    bounds = App.campusBounds;
+  }
+  const pad = 10;
   const sx = (W-pad*2)/Math.max(1,bounds.maxX-bounds.minX);
   const sz = (H-pad*2)/Math.max(1,bounds.maxZ-bounds.minZ);
   const s = Math.min(sx,sz);
@@ -1401,13 +1657,13 @@ function drawMinimap(d){
       ctx.strokeStyle='rgba(56,217,255,.18)'; ctx.lineWidth=0.7; ctx.stroke();
     });
     // Ruta planificada
-    if(App.missionPath){
+    if(mission==='campus' && App.missionPath){
       ctx.beginPath();
-      App.missionPath.forEach((p,i)=>{ const X=px(p.x), Y=pz(-p.z); i?ctx.lineTo(X,Y):ctx.moveTo(X,Y); });
+      App.missionPath.forEach((p,i)=>{ const X=px(p.x), Y=pz(p.z); i?ctx.lineTo(X,Y):ctx.moveTo(X,Y); });
       ctx.strokeStyle='rgba(56,217,255,.30)'; ctx.lineWidth=1.2; ctx.setLineDash([4,4]); ctx.stroke(); ctx.setLineDash([]);
     }
     // Corredor sin GPS
-    if(App.missionData?.gps_denied?.length && App.state){
+    if(mission==='campus' && App.missionData?.gps_denied?.length && App.state){
       const [a,b] = App.missionData.gps_denied[0];
       const t = Number(App.state.sim_time||0);
       if(t>=a && t<=b){
@@ -1416,7 +1672,7 @@ function drawMinimap(d){
     }
   }
 
-  // Trayectoria GT reciente
+  // Trayectoria reciente (GT en simulaciones, estimada en telemetría real)
   if(App.trails.gt && App.trails.gt.count>1){
     const t = App.trails.gt;
     ctx.beginPath();
@@ -1425,41 +1681,64 @@ function drawMinimap(d){
       const X=px(t.positions[i*3]), Y=pz(t.positions[i*3+2]);
       if(!started){ ctx.moveTo(X,Y); started=true; } else ctx.lineTo(X,Y);
     }
-    ctx.strokeStyle='rgba(56,217,255,.75)'; ctx.lineWidth=1.6; ctx.stroke();
+    ctx.strokeStyle = isHardware ? 'rgba(255,200,87,.85)' : 'rgba(56,217,255,.75)';
+    ctx.lineWidth=1.6; ctx.stroke();
   }
 
-  // Vehículo
+  // Origen / home en telemetría real
+  if(isHardware){
+    const hx=px(0), hz=pz(0);
+    ctx.strokeStyle='rgba(127,151,179,.55)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(hx-5,hz); ctx.lineTo(hx+5,hz); ctx.moveTo(hx,hz-5); ctx.lineTo(hx,hz+5); ctx.stroke();
+    ctx.fillStyle='rgba(127,151,179,.8)'; ctx.font='7px Consolas'; ctx.textAlign='left';
+    ctx.fillText('HOME', hx+6, hz+3);
+  }
+
+  // Vehículo (posición estimada)
   const v = d.vehicle||{};
   const vx = px(v.x||0), vz = pz(v.z||0);
+  const markerColor = isHardware ? '#ffc857' : (isCessna ? '#b6ff5c' : '#38d9ff');
   ctx.save();
   ctx.translate(vx,vz); ctx.rotate(rad(v.yaw||0));
-  ctx.fillStyle='#b6ff5c';
+  ctx.fillStyle=markerColor;
   ctx.beginPath(); ctx.moveTo(0,-6); ctx.lineTo(4,5); ctx.lineTo(0,2); ctx.lineTo(-4,5); ctx.closePath(); ctx.fill();
   ctx.restore();
-  ctx.strokeStyle='rgba(182,255,92,.35)'; ctx.lineWidth=1;
+  ctx.strokeStyle = isHardware ? 'rgba(255,200,87,.45)' : 'rgba(182,255,92,.35)';
+  ctx.lineWidth=1;
   ctx.beginPath(); ctx.arc(vx,vz,10,0,Math.PI*2); ctx.stroke();
+  if(isHardware){
+    ctx.fillStyle='rgba(255,200,87,.95)'; ctx.font='700 7px Consolas'; ctx.textAlign='center';
+    ctx.fillText('ESTIMADO', vx, vz-14);
+  }
 
-  // Escala
+  // Escala adaptativa
+  const span = Math.max(1, bounds.maxX-bounds.minX);
+  const targetPx = 62;
+  const rawM = targetPx / s;
+  const steps = [5,10,20,25,50,100,200,250,500,1000,2000,4000,8000];
+  let scaleM = steps[0];
+  for(const st of steps){ if(st <= rawM) scaleM = st; }
   ctx.fillStyle='rgba(127,151,179,.75)'; ctx.font='8px Consolas'; ctx.textAlign='left';
-  const scaleM = 100;
   ctx.fillText(`${scaleM} m`, pad+2, H-4);
   ctx.strokeStyle='rgba(127,151,179,.55)';
   ctx.beginPath(); ctx.moveTo(pad+2,H-14); ctx.lineTo(pad+2+scaleM*s,H-14); ctx.stroke();
   ctx.textAlign='right'; ctx.fillStyle='rgba(56,217,255,.7)';
-  ctx.fillText(isCessna?'CESSNA':'TECMM', W-pad-2, 12);
+  const missionLabel = isCessna ? 'CESSNA 172' : (isHardware ? 'DRON · ESTIMADO' : 'GROB 120TP · TSJ');
+  ctx.fillText(missionLabel, W-pad-2, 12);
 }
 
 /* =========================================================================
    CÁMARAS
    ========================================================================= */
+function startCamera(name){
+  const img = $('cam-'+name);
+  if(!img) return;
+  img.src = `/camera/${name}.mjpg?t=${Date.now()}`;
+  img.onerror = ()=>{ const sub=$('cam-'+name+'-sub'); if(sub) sub.textContent='SIN SEÑAL'; };
+}
+
 function initCameras(){
-  const stamp = Date.now();
-  ['nadir','sky','real'].forEach(name=>{
-    const img = $('cam-'+name);
-    if(!img) return;
-    img.src = `/camera/${name}.mjpg?t=${stamp}`;
-    img.onerror = ()=>{ $('cam-'+name+'-sub').textContent='SIN SEÑAL'; };
-  });
+  ['nadir','sky','real','real2'].forEach(startCamera);
   document.querySelectorAll('.cam').forEach(cam=>{
     cam.addEventListener('click',()=>{
       const name = cam.dataset.cam;
@@ -1470,13 +1749,21 @@ function initCameras(){
   $('modal-close').addEventListener('click',()=>$('modal').classList.remove('open'));
   $('modal').addEventListener('click',e=>{ if(e.target.id==='modal') $('modal').classList.remove('open'); });
 
-  $('cam-apply').addEventListener('click', async ()=>{
-    let value = $('cam-url').value.trim();
+  const applyCamera = async (name, inputId)=>{
+    const input = $(inputId);
+    let value = input ? input.value.trim() : '';
     if(!value) return toast('Escribe una URL MJPEG o un índice de webcam');
     const source = /^\d+$/.test(value) ? Number(value) : value;
-    const res = await postControl({action:'camera_config', name:'real', source});
-    if(res.ok) toast('Cámara real configurada'); else toast('Error: '+(res.error||'no se pudo configurar'));
-  });
+    const res = await postControl({action:'camera_config', name, source});
+    if(res.ok){
+      startCamera(name);
+      toast(`Cámara ${name==='real'?'1':'2'} configurada`);
+    }else{
+      toast('Error: '+(res.error||'no se pudo configurar'));
+    }
+  };
+  $('cam-apply').addEventListener('click', ()=>applyCamera('real','cam-url'));
+  $('cam-apply2').addEventListener('click', ()=>applyCamera('real2','cam-url2'));
   document.querySelectorAll('[data-cam-preset]').forEach(btn=>{
     btn.addEventListener('click',()=>{ $('cam-url').value = btn.dataset.camPreset; });
   });
@@ -1486,7 +1773,7 @@ async function refreshCameraStatus(){
   try{
     const s = await fetchJSON('/api/status');
     const cams = s.cameras||{};
-    ['nadir','sky','real'].forEach(name=>{
+    ['nadir','sky','real','real2'].forEach(name=>{
       const c = cams[name]||{};
       const sub = $('cam-'+name+'-sub');
       if(sub){
@@ -1629,6 +1916,136 @@ function bindUI(){
     toast('Integrador y actitud a cero');
   });
   $('btn-live').addEventListener('click', ()=> setSource('live','hardware'));
+  bindRouteEditor();
+}
+
+/* =========================================================================
+   EDITOR DE RUTA DEL CAMPUS
+   ========================================================================= */
+function bindRouteEditor(){
+  const edit = $('route-edit'), undo = $('route-undo'), clear = $('route-clear'), apply = $('route-apply');
+  if(!edit) return;
+  edit.addEventListener('click', ()=> setRouteEdit(!App.editMode));
+  undo.addEventListener('click', ()=>{ if(!App.editMode) return; App.editRoute.pop(); updateRoutePreview(); });
+  clear.addEventListener('click', ()=>{ if(!App.editMode) return; App.editRoute = []; updateRoutePreview(); });
+  apply.addEventListener('click', applyRoute);
+
+  const canvas = App.renderer.domElement;
+  let down = null;
+  canvas.addEventListener('pointerdown', e=>{ down = {x:e.clientX, y:e.clientY}; });
+  canvas.addEventListener('pointerup', e=>{
+    if(!App.editMode || !down) return;
+    const moved = Math.hypot(e.clientX-down.x, e.clientY-down.y);
+    down = null;
+    if(moved > 6 || e.button !== 0) return;   // fue un arrastre de cámara, no un clic
+    const p = groundPointFromEvent(e);
+    if(!p) return;
+    App.editRoute.push(p);
+    updateRoutePreview();
+  });
+}
+
+function setRouteEdit(on){
+  if(on && App.missionId!=='campus'){ toast('El editor solo está disponible en la misión campus'); return; }
+  App.editMode = !!on;
+  if(on && !App.editRoute.length && App.missionPath){
+    App.editRoute = App.missionPath.map(p=>({x:p.x, z:p.z}));
+  }
+  const btn = $('route-edit');
+  if(btn){
+    btn.classList.toggle('primary', !on);
+    btn.textContent = on ? '✎ Editando…' : '✎ Editar ruta';
+  }
+  if(on) setViewMode('satellite');   // mapa completo para colocar puntos
+  App.renderer.domElement.style.cursor = on ? 'crosshair' : '';
+  updateRoutePreview();
+}
+
+function groundPointFromEvent(e){
+  if(!App.camera || !App.renderer || !App.campusGroup) return null;
+  const rect = App.renderer.domElement.getBoundingClientRect();
+  const ndc = new THREE.Vector2(
+    ((e.clientX-rect.left)/rect.width)*2-1,
+    -((e.clientY-rect.top)/rect.height)*2+1
+  );
+  const ray = new THREE.Raycaster();
+  ray.setFromCamera(ndc, App.camera);
+  const plane = new THREE.Plane(new THREE.Vector3(0,1,0), 0);
+  const hit = new THREE.Vector3();
+  if(!ray.ray.intersectPlane(plane, hit)) return null;
+  const b = App.campusBounds;
+  return {x: clamp(hit.x, b.minX, b.maxX), z: clamp(hit.z, b.minZ, b.maxZ)};
+}
+
+function updateRoutePreview(){
+  if(!App.campusGroup) return;
+  const count = $('route-count');
+  if(count) count.textContent = App.editRoute.length + (App.editRoute.length===1?' punto':' puntos');
+  const pts = App.editRoute.map(p=>new THREE.Vector3(p.x, 2, p.z));
+
+  if(!App.previewLine){
+    App.previewLine = new THREE.Line(
+      new THREE.BufferGeometry(),
+      new THREE.LineDashedMaterial({color:0xffc857, dashSize:10, gapSize:7, transparent:true, opacity:0.95})
+    );
+    App.previewLine.frustumCulled = false;
+    App.campusGroup.add(App.previewLine);
+  }
+  App.previewLine.geometry.dispose();
+  App.previewLine.geometry = new THREE.BufferGeometry().setFromPoints(pts);
+  App.previewLine.computeLineDistances();
+  App.previewLine.visible = App.editMode && pts.length > 0;
+
+  if(!App.editMarkers){
+    App.editMarkers = new THREE.Group();
+    App.campusGroup.add(App.editMarkers);
+  }
+  while(App.editMarkers.children.length > App.editRoute.length){
+    const m = App.editMarkers.children.pop();
+    if(m.geometry) m.geometry.dispose();
+    if(m.material) m.material.dispose();
+  }
+  App.editRoute.forEach((p,i)=>{
+    let m = App.editMarkers.children[i];
+    if(!m){
+      m = new THREE.Mesh(
+        new THREE.SphereGeometry(4.5, 10, 8),
+        new THREE.MeshBasicMaterial({color:0xffc857})
+      );
+      App.editMarkers.add(m);
+    }
+    m.position.set(p.x, 5, p.z);
+  });
+  App.editMarkers.visible = App.editMode;
+  const apply = $('route-apply');
+  if(apply) apply.disabled = App.editRoute.length < 2;
+}
+
+async function applyRoute(){
+  if(App.editRoute.length < 2){ toast('Añade al menos 2 puntos'); return; }
+  const res = await postControl({action:'set_route', waypoints: App.editRoute});
+  if(!res.ok){ toast('Ruta rechazada: '+(res.error||'error')); return; }
+  try{
+    const mission = await fetchJSON('/api/mission?name=campus');
+    App.missionData = mission;
+    if(mission.waypoints && mission.waypoints.length){
+      const pts = mission.waypoints.map(w=>new THREE.Vector3(w.x, 2, w.z));
+      App.missionPath = pts;
+      if(App.routeLine){
+        App.routeLine.geometry.dispose();
+        App.routeLine.geometry = new THREE.BufferGeometry().setFromPoints(pts);
+        App.routeLine.computeLineDistances();
+      }
+    }
+    $('mh-ekf').textContent = fmt(mission.metrics?.ekf_rmse_m,2)+' m';
+    $('mh-ins').textContent = fmt(mission.metrics?.ins_rmse_m,2)+' m';
+    $('mh-sub').textContent = `Recorrido ${fmt(mission.metrics?.path_length_m,0)} m · ventana sin GPS ${fmt(mission.gps_denied?.[0]?.[0],0)}–${fmt(mission.gps_denied?.[0]?.[1],0)} s`;
+  }catch(e){ console.warn('misión', e); }
+  clearTrails(); App.history = [];
+  App.editRoute = [];
+  setRouteEdit(false);
+  updateRoutePreview();
+  toast(`Ruta aplicada · ${res.samples||0} muestras, ${fmt(res.duration,1)} s`);
 }
 
 function renderMissionTabs(missions){
@@ -1647,56 +2064,101 @@ function renderMissionTabs(missions){
 
 async function setMission(mission){
   App.missionId = mission;
-  App.sceneLock = performance.now() + 2500;
   document.querySelectorAll('.mission-tab').forEach(t=>t.classList.toggle('active', t.dataset.mission===mission));
   const source = mission==='campus'?'campus':(mission==='cessna'?'sim':'live');
   App.sourceId = source;
   $('source-select').value = source;
   await postControl({action:'set_mission', mission});
-  await switchSceneForMission(mission, true);
-  setViewMode('orbit');
+  const sceneMission = mission==='hardware' ? 'campus' : mission;
+  setViewMode(mission==='hardware' ? 'satellite' : 'chase');
+  await switchSceneForMission(mission, App.sceneMission!==sceneMission);
   clearTrails(); App.history = [];
 }
 
 async function setSource(source, mission){
   App.sourceId = source;
   App.missionId = mission;
-  App.sceneLock = performance.now() + 2500;
   document.querySelectorAll('.mission-tab').forEach(t=>t.classList.toggle('active', t.dataset.mission===mission));
   const res = await postControl({action:'set_source', source, mission});
   if(!res.ok) toast('No se pudo cambiar la fuente');
-  await switchSceneForMission(mission, true);
-  setViewMode('orbit');
+  const sceneMission = mission==='hardware' ? 'campus' : mission;
+  setViewMode(mission==='hardware' ? 'satellite' : 'chase');
+  await switchSceneForMission(mission, App.sceneMission!==sceneMission);
   clearTrails(); App.history = [];
 }
 
 async function switchSceneForMission(mission, reload){
-  if(mission==='hardware') mission='campus';
-  if(!reload && App.sceneMission===mission) return;
-  App.sceneMission = mission;
-  applyEnvironment(mission);
+  const token = ++App.sceneToken;
+  const sceneMission = mission==='hardware' ? 'campus' : mission;
+  if(!reload && App.sceneMission===sceneMission){ applyMissionVisibility(); return; }
+  App.sceneMission = sceneMission;
+  applyEnvironment(sceneMission);
   try{
-    const scene = await fetchJSON('/api/scene?mission='+mission);
+    const scene = await fetchJSON('/api/scene?mission='+sceneMission);
+    if(token !== App.sceneToken) return;
     App.sceneData = scene;
-    if(mission==='campus') await buildCampusScene(scene);
+    if(sceneMission==='campus') await buildCampusScene(scene);
     else await buildCessnaScene(scene);
-    App.campusGroup.visible = mission==='campus';
-    App.cessnaGroup.visible = mission==='cessna';
-    // El vehículo correcto
-    if(App.droneModel) App.droneModel.visible = mission!=='cessna';
-    if(App.cessnaModel) App.cessnaModel.visible = mission==='cessna';
+    if(token !== App.sceneToken) return;
+    applyMissionVisibility();
   }catch(e){
+    if(token !== App.sceneToken) return;
     console.error('No se pudo cargar la escena', e);
     toast('No se pudo cargar la escena: '+e.message);
   }
 }
 
+function applyMissionVisibility(){
+  const mission = App.missionId;
+  App.campusGroup.visible = App.sceneMission==='campus';
+  App.cessnaGroup.visible = App.sceneMission==='cessna';
+  if(App.cessnaModel) App.cessnaModel.visible = mission==='cessna';
+  if(App.grobModel) App.grobModel.visible = mission==='campus';
+  if(App.droneModel){
+    App.droneModel.visible = mission==='hardware';
+    App.droneModel.scale.setScalar(mission==='hardware' ? 5 : 1);
+  }
+  const simCams = $('sim-cameras'), realCams = $('real-cameras');
+  if(simCams) simCams.style.display = mission==='hardware' ? 'none' : '';
+  if(realCams) realCams.style.display = mission==='hardware' ? '' : 'none';
+  const routeEditor = $('route-editor');
+  if(routeEditor) routeEditor.style.display = mission==='campus' ? '' : 'none';
+  if(mission!=='campus' && App.editMode){
+    App.editRoute = [];
+    setRouteEdit(false);
+  }
+  updateMissionHud(mission);
+
+  // En telemetría real, encuadrar la posición estimada del dron.
+  if(mission==='hardware' && App.viewMode==='orbit'){
+    const v = App.vehicleRoot.position;
+    App.controls.target.copy(v);
+    App.camera.position.set(v.x + 120, v.y + 90, v.z + 140);
+    App.controls.update();
+  }
+}
+
+function updateMissionHud(mission){
+  const titles = {
+    cessna: ['Cessna 172 · Circuito JSBSim', 'Vuelo real · VO/TRN + EKF · corredor GPS-denied'],
+    campus: ['Grob 120TP · Campus TSJ Zapopan', 'Circuito de inspección · VIO + EKF'],
+    hardware: ['Telemetría real · cámaras + dron', 'ESP32-CAM en vivo · posición estimada']
+  };
+  const [title, sub] = titles[mission] || titles.campus;
+  if($('mh-title')) $('mh-title').textContent = title;
+  if($('mh-sub')) $('mh-sub').textContent = sub;
+}
+
 function setViewMode(mode){
   App.viewMode = mode;
   document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('primary', b.dataset.view===mode));
-  App.controls.enabled = (mode==='orbit');
-  if(mode==='orbit'){
-    App.controls.target.set(0,0,0);
+  App.controls.enabled = (mode==='orbit' || mode==='satellite');
+  if(mode==='satellite' && App.camera && App.controls){
+    // Vista satelital libre: cámara alta sobre el campus, sin seguir al vehículo.
+    const v = App.vehicleRoot ? App.vehicleRoot.position : null;
+    const center = (App.missionId==='hardware' && v) ? v.clone() : new THREE.Vector3(0,0,0);
+    App.controls.target.copy(center);
+    App.camera.position.set(center.x + 1, 620, center.z + 1);
     App.controls.update();
   }
 }
@@ -1705,8 +2167,8 @@ function setViewMode(mode){
 function applyEnvironment(mission){
   if(!App.scene) return;
   if(mission==='cessna'){
-    App.scene.background = new THREE.Color(0x8ec5e8);
-    App.scene.fog = new THREE.FogExp2(0xb3d6ee, 0.00005);
+    App.scene.background = new THREE.Color(0x87ceeb);
+    App.scene.fog = new THREE.FogExp2(0x93c5fd, 0.00015);
   }else{
     App.scene.background = new THREE.Color(0x060d17);
     App.scene.fog = new THREE.FogExp2(0x0a1524, 0.00016);
@@ -1720,18 +2182,36 @@ function updateCameraMode(dt){
   const yaw = rad(v.yaw||0);
   const target = new THREE.Vector3();
   const desired = new THREE.Vector3();
-  if(App.viewMode==='chase'){
-    const back = new THREE.Vector3(-Math.sin(yaw)*70, 28, Math.cos(yaw)*70);
-    desired.copy(pos).add(back);
-    target.copy(pos);
-  }else if(App.viewMode==='cockpit'){
-    const forward = new THREE.Vector3(Math.sin(yaw)*3, 1.6, -Math.cos(yaw)*3);
-    desired.copy(pos).add(forward);
-    target.copy(pos).add(new THREE.Vector3(Math.sin(yaw)*80, 0, -Math.cos(yaw)*80));
-  }else if(App.viewMode==='top'){
-    desired.copy(pos).add(new THREE.Vector3(0.1, 220, 0.1));
-    target.copy(pos);
+  const isCessna = App.missionId==='cessna';
+
+  if(isCessna){
+    // Cámara idéntica al simulador original del Cessna (nariz en -Z).
+    if(App.viewMode==='chase'){
+      desired.copy(pos).add(new THREE.Vector3(0, 7, 26).applyEuler(App.vehicleRoot.rotation));
+      target.copy(pos).add(new THREE.Vector3(0, 1.5, -15).applyEuler(App.vehicleRoot.rotation));
+    }else if(App.viewMode==='cockpit'){
+      desired.copy(pos).add(new THREE.Vector3(-0.35, 0.88, -0.4).applyEuler(App.vehicleRoot.rotation));
+      target.copy(desired).add(new THREE.Vector3(0, -0.05, -100).applyEuler(App.vehicleRoot.rotation));
+    }else{
+      desired.copy(pos).add(new THREE.Vector3(0.1, 1000, 0.1));
+      target.copy(pos);
+    }
+  }else{
+    // Grob 120TP (campus) y dron real (hardware): offsets proporcionales.
+    const scale = App.missionId==='campus' ? 1.0 : 0.45;
+    const back = 26*scale, up = 7*scale, ahead = 15*scale;
+    if(App.viewMode==='chase'){
+      desired.set(pos.x - Math.sin(yaw)*back, pos.y + up, pos.z + Math.cos(yaw)*back);
+      target.copy(pos).add(new THREE.Vector3(Math.sin(yaw)*ahead, 0, -Math.cos(yaw)*ahead));
+    }else if(App.viewMode==='cockpit'){
+      desired.set(pos.x + Math.sin(yaw)*0.6, pos.y + 0.9, pos.z - Math.cos(yaw)*0.6);
+      target.copy(pos).add(new THREE.Vector3(Math.sin(yaw)*100, 0, -Math.cos(yaw)*100));
+    }else{
+      desired.copy(pos).add(new THREE.Vector3(0.1, 220*scale, 0.1));
+      target.copy(pos);
+    }
   }
+
   const lerp = 1 - Math.exp(-6*dt);
   App.camera.position.lerp(desired, lerp);
   App.cameraTarget.lerp(target, lerp);
@@ -1777,13 +2257,14 @@ async function init(){
   // Modelos
   App.droneModel = buildDroneModel();
   App.vehicleRoot.add(App.droneModel);
+  App.grobModel = buildGrobModel();
+  App.vehicleRoot.add(App.grobModel);
   const plane = buildCessnaModel();
   App.vehicleRoot.add(plane);
 
   initTrails();
   initCameras();
   bindUI();
-  setViewMode('orbit');
 
   try{
     const status = await fetchJSON('/api/status');
@@ -1792,6 +2273,7 @@ async function init(){
     App.sourceId = status.source || 'campus';
     if(status.cameras) App.config.camera_status = status.cameras;
   }catch(e){ console.warn('status', e); }
+  setViewMode(App.missionId==='hardware' ? 'satellite' : 'chase');
 
   if(App.config?.missions) renderMissionTabs(App.config.missions);
   $('source-select').value = App.sourceId;

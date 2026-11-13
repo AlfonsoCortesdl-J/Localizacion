@@ -49,7 +49,7 @@ from collections import deque
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 from urllib.parse import parse_qs, urlparse
 
 import numpy as np
@@ -465,10 +465,12 @@ class CameraManager:
         self.nadir = SimCamera("nadir", DATA_DIR / "camera_ground_frames.csv", DATA_DIR / "camera_ground", 5.0)
         self.sky = SimCamera("sky", DATA_DIR / "camera_sky_frames.csv", DATA_DIR / "camera_sky", 2.0)
         self.real = RealCamera("real")
+        self.real2 = RealCamera("real2")
         self._synthetic = {
             "nadir": SyntheticCamera("nadir", "CAMARA NADIR VIRTUAL", (30, 200, 255)),
             "sky": SyntheticCamera("sky", "CAMARA CENITAL VIRTUAL", (160, 120, 255)),
-            "real": SyntheticCamera("real", "CAMARA REAL / ESP32-CAM", (80, 240, 140)),
+            "real": SyntheticCamera("real", "CAMARA REAL 1 / ESP32-CAM", (80, 240, 140)),
+            "real2": SyntheticCamera("real2", "CAMARA REAL 2 / ESP32-CAM", (255, 190, 90)),
         }
 
     def set_time(self, sim_time: float) -> None:
@@ -482,6 +484,8 @@ class CameraManager:
             return self.sky if self.sky.latest_jpeg() else self._synthetic["sky"]
         if name == "real":
             return self.real if self.real.latest_jpeg() else self._synthetic["real"]
+        if name == "real2":
+            return self.real2 if self.real2.latest_jpeg() else self._synthetic["real2"]
         raise KeyError(name)
 
     def snapshot(self, name: str) -> Optional[bytes]:
@@ -492,6 +496,7 @@ class CameraManager:
             "nadir": self.nadir.status(),
             "sky": self.sky.status(),
             "real": self.real.status(),
+            "real2": self.real2.status(),
         }
 
 
@@ -653,6 +658,41 @@ class CampusSource(BaseSource):
         self.samples: List[Dict[str, Any]] = self.mission["samples"]
         self.duration = float(self.mission["duration"])
         self._idx_t = [float(s["t"]) for s in self.samples]
+        self.t = 0.0
+
+    def set_route(
+        self,
+        waypoints: Sequence[Any],
+        speed_mps: Optional[float] = None,
+        cruise_alt_m: Optional[float] = None,
+        persist: bool = False,
+    ) -> Dict[str, Any]:
+        """Recalcula la misión del campus con una ruta definida por el usuario."""
+        from src.campus_scene import build_mission
+
+        pts: List[List[float]] = []
+        for item in waypoints:
+            if isinstance(item, dict):
+                pts.append([float(item["x"]), float(item["z"])])
+            else:
+                pts.append([float(item[0]), float(item[1])])
+        if len(pts) < 2:
+            raise ValueError("la ruta necesita al menos dos puntos")
+        speed = float(speed_mps) if speed_mps else float(self.mission.get("speed_mps", 13.5))
+        alt = float(cruise_alt_m) if cruise_alt_m else 34.0
+        mission = build_mission(waypoints=pts, speed_mps=speed, cruise_alt_m=alt, write=persist)
+        self.mission = mission
+        self.samples = mission["samples"]
+        self.duration = float(mission["duration"])
+        self._idx_t = [float(s["t"]) for s in self.samples]
+        self.t = 0.0
+        return {
+            "waypoints": mission.get("waypoints", []),
+            "duration": self.duration,
+            "samples": len(self.samples),
+            "metrics": mission.get("metrics", {}),
+            "gps_denied": mission.get("gps_denied", []),
+        }
 
     def frame_at(self, t: float) -> Dict[str, Any]:
         idx = _nearest_index(np.array(self._idx_t), t)
@@ -705,21 +745,21 @@ class CampusSource(BaseSource):
                 "duration": self.duration,
                 "gps_denied": self.mission.get("gps_denied", []),
                 "metrics": self.mission.get("metrics", {}),
+                "waypoints": self.mission.get("waypoints", []),
             },
         }
 
     async def run(self) -> None:
         self.hub.set_status(source=self.name, mission="campus")
-        t = 0.0
         while self.active():
             if not self.hub.paused:
-                t += 0.05 * self.hub.speed
-                if t > self.duration:
-                    t = 0.0
+                self.t += 0.05 * self.hub.speed
+                if self.t > self.duration:
+                    self.t = 0.0
                     self.hub.clear_trails()
-                self.hub.publish(self.frame_at(t))
+                self.hub.publish(self.frame_at(self.t))
                 # La cámara virtual sigue el tiempo de la misión (mod 150 s).
-                self.hub.cameras.set_time(t % 150.0)
+                self.hub.cameras.set_time(self.t % 150.0)
             await asyncio.sleep(0.05)
 
 
@@ -963,8 +1003,8 @@ class RealtimeHub:
             "udp_port": self.udp_port,
             "missions": [
                 {"id": "cessna", "name": "Cessna 172P · Circuito JSBSim", "kind": "aircraft"},
-                {"id": "campus", "name": "Dron · Inspección TecMM Zapopan", "kind": "drone"},
-                {"id": "hardware", "name": "Hardware en vivo · ESP32/STM32", "kind": "hardware"},
+                {"id": "campus", "name": "Grob 120TP · Campus TSJ Zapopan", "kind": "aircraft"},
+                {"id": "hardware", "name": "Telemetría real · Cámaras + dron", "kind": "hardware"},
             ],
             "sources": [
                 {"id": "sim", "name": "Simulación Cessna (datos reales)"},
@@ -973,7 +1013,7 @@ class RealtimeHub:
                 {"id": "live", "name": "Telemetría externa HTTP/UDP"},
                 {"id": "replay", "name": "Reproducir sesión grabada"},
             ],
-            "cameras": ["nadir", "sky", "real"],
+            "cameras": ["nadir", "sky", "real", "real2"],
             "camera_status": self.cameras.status(),
             "serial_ports": list_available_ports(),
             "started_at": self.state.started_at,
@@ -1112,6 +1152,13 @@ class RealtimeHub:
             except Exception:
                 pass
         y = max(0.0, dr.y)
+        for key in ("alt_agl_m", "altitude_agl_m", "up_m", "y"):
+            if packet.get(key) is not None:
+                try:
+                    y = max(0.0, float(packet[key]))
+                    break
+                except (TypeError, ValueError):
+                    pass
         yaw = packet.get("yaw_deg", dr.yaw) % 360.0
         speed = math.sqrt(dr.vx ** 2 + dr.vy ** 2 + dr.vz ** 2)
         return {
@@ -1201,7 +1248,14 @@ class RealtimeHub:
         dr = self._live_dr
         if x is None or y is None or z is None:
             dr.update((ax, ay, az), (gx, gy, gz), (roll, pitch, yaw))
-            x, y, z = dr.x, dr.y, dr.z
+            if x is None:
+                x = dr.x
+            if y is None:
+                y = dr.y
+            if z is None:
+                z = dr.z
+            # Anclar el integrador a los valores absolutos recibidos.
+            dr.x, dr.y, dr.z = float(x), float(y), float(z)
         else:
             dr.x, dr.y, dr.z = float(x), float(y), float(z)
 
@@ -1272,6 +1326,9 @@ class RealtimeHub:
 
     def switch_source(self, name: str, mission: Optional[str] = None) -> None:
         if name == self.source_name and self.source is not None:
+            if mission and mission != self.mission:
+                self.mission = mission
+                self.set_status(name, mission)
             return
         print(f"[hub] Cambiando fuente a {name}")
         if self.source is not None:
@@ -1508,9 +1565,15 @@ class RealtimeHub:
                     return
                 if path == "/api/mission":
                     name = (query.get("name") or ["campus"])[0]
-                    if name == "campus" and MISSION_PATH.exists():
-                        with open(MISSION_PATH, "r", encoding="utf-8") as f:
-                            mission = json.load(f)
+                    mission = None
+                    if name == "campus":
+                        live = getattr(hub, "source", None)
+                        if isinstance(live, CampusSource):
+                            mission = dict(live.mission)
+                        elif MISSION_PATH.exists():
+                            with open(MISSION_PATH, "r", encoding="utf-8") as f:
+                                mission = json.load(f)
+                    if mission is not None:
                         # No enviar las 1600 muestras: el WebSocket ya las empuja.
                         mission.pop("samples", None)
                         self._json(mission)
@@ -1550,7 +1613,7 @@ class RealtimeHub:
 
             def _handle_camera(self, path: str):
                 name = path[len("/camera/"):].split(".")[0]
-                if name not in ("nadir", "sky", "real"):
+                if name not in ("nadir", "sky", "real", "real2"):
                     self._json({"error": "cámara desconocida"}, 404)
                     return
                 if path.endswith(".jpg"):
@@ -1621,6 +1684,22 @@ class RealtimeHub:
         if action == "set_speed":
             self.state.speed = max(0.1, min(8.0, float(payload.get("speed", 1.0))))
             return {"ok": True, "speed": self.state.speed}
+        if action == "set_route":
+            source = getattr(self, "source", None)
+            if not isinstance(source, CampusSource):
+                return {"ok": False, "error": "la ruta solo se edita en la misión campus"}
+            try:
+                info = source.set_route(
+                    payload.get("waypoints") or [],
+                    speed_mps=payload.get("speed_mps"),
+                    cruise_alt_m=payload.get("cruise_alt_m"),
+                    persist=bool(payload.get("persist", False)),
+                )
+            except Exception as exc:  # noqa: BLE001
+                return {"ok": False, "error": str(exc)}
+            self.clear_trails()
+            print(f"[hub] Ruta del campus actualizada: {info['samples']} muestras, {info['duration']:.1f} s")
+            return {"ok": True, **info}
         if action == "reset":
             if hasattr(self, "_live_dr"):
                 self._live_dr.reset()
@@ -1634,15 +1713,16 @@ class RealtimeHub:
             return {"ok": True, "path": path}
         if action == "camera_config":
             name = payload.get("name", "real")
-            if name != "real":
-                return {"ok": False, "error": "solo la cámara real es configurable"}
+            if name not in ("real", "real2"):
+                return {"ok": False, "error": "solo las cámaras reales son configurables"}
             source = payload.get("source")
             if source is None:
                 return {"ok": False, "error": "falta source"}
             if isinstance(source, str) and source.isdigit():
                 source = int(source)
-            self.cameras.real.configure(source)
-            return {"ok": True, "camera": self.cameras.real.status()}
+            camera = self.cameras.real if name == "real" else self.cameras.real2
+            camera.configure(source)
+            return {"ok": True, "camera": camera.status()}
         if action == "calibrate":
             # Reset del integrador y de la actitud del filtro.
             if hasattr(self, "_live_dr"):
@@ -1682,6 +1762,7 @@ class RealtimeHub:
             except Exception:
                 pass
         self.cameras.real.stop()
+        self.cameras.real2.stop()
         if self.http_server is not None:
             self.http_server.shutdown()
         print("[hub] Detenido.")
@@ -1697,7 +1778,8 @@ def main() -> None:
     parser.add_argument("--mission", choices=["cessna", "campus", "hardware"], default=None)
     parser.add_argument("--port", default="auto", help="Puerto serie para --source serial (COM3, /dev/ttyUSB0, auto)")
     parser.add_argument("--baud", type=int, default=115200)
-    parser.add_argument("--camera", default=None, help="Webcam (índice) o URL MJPEG para la cámara real")
+    parser.add_argument("--camera", default=None, help="Webcam (índice) o URL MJPEG para la cámara real 1")
+    parser.add_argument("--camera2", default=None, help="Webcam (índice) o URL MJPEG para la cámara real 2")
     parser.add_argument("--record-frames", action="store_true", help="Guardar fotogramas de evidencia ~1 Hz")
     args = parser.parse_args()
 
@@ -1717,6 +1799,9 @@ def main() -> None:
     if args.camera is not None:
         camera_source: Any = int(args.camera) if str(args.camera).isdigit() else args.camera
         hub.cameras.real.configure(camera_source)
+    if args.camera2 is not None:
+        camera_source2: Any = int(args.camera2) if str(args.camera2).isdigit() else args.camera2
+        hub.cameras.real2.configure(camera_source2)
 
     try:
         asyncio.run(hub.run())

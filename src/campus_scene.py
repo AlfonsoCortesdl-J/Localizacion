@@ -460,40 +460,56 @@ def _resample_path(path: Sequence[Sequence[float]], speed_mps: float, hz: float 
     return samples
 
 
-def build_mission(scene: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+DEFAULT_WAYPOINTS_2D: List[tuple] = [
+    # Circuito que recorre los pasillos entre los edificios del campus.
+    (-210.0, 150.0),
+    (-120.0, 116.0),
+    (60.0, 116.0),
+    (250.0, 116.0),
+    (295.0, 100.0),
+    (295.0, 58.0),
+    (250.0, 58.0),
+    (80.0, 58.0),
+    (-120.0, 58.0),
+    (-175.0, 40.0),
+    (-175.0, -20.0),
+    (-120.0, -20.0),
+    (60.0, -20.0),
+    (250.0, -20.0),
+    (295.0, -50.0),
+    (295.0, -95.0),
+    (230.0, -110.0),
+    (120.0, -105.0),
+    (20.0, -100.0),
+    (-120.0, -80.0),
+    (-200.0, -50.0),
+    (-235.0, 20.0),
+    (-235.0, 110.0),
+    (-210.0, 150.0),
+]
+
+
+def build_mission(
+    scene: Optional[Dict[str, Any]] = None,
+    waypoints: Optional[Sequence[Sequence[float]]] = None,
+    speed_mps: float = 13.5,
+    cruise_alt_m: float = 34.0,
+    write: bool = True,
+) -> Dict[str, Any]:
     scene = scene or ensure_scene()
     meta = load_meta()
     projection = CampusProjection(meta)
 
-    # Circuito de inspección: perímetro + barrido boustrophedon sobre edificios.
-    waypoints_2d = [
-        (-260.0, 380.0),
-        (-260.0, 250.0),
-        (-260.0, 120.0),
-        (-260.0, -20.0),
-        (-260.0, -160.0),
-        (-260.0, -300.0),
-        (-160.0, -320.0),
-        (-60.0, -320.0),
-        (40.0, -320.0),
-        (140.0, -320.0),
-        (240.0, -320.0),
-        (330.0, -300.0),
-        (350.0, -180.0),
-        (350.0, -60.0),
-        (350.0, 60.0),
-        (350.0, 180.0),
-        (350.0, 300.0),
-        (260.0, 350.0),
-        (160.0, 350.0),
-        (60.0, 350.0),
-        (-40.0, 350.0),
-        (-140.0, 350.0),
-        (-220.0, 380.0),
-    ]
-    # Altitud variable: 38 m de crucero, 26 m en la pasada central (corredor).
+    # Ruta de inspección: pasillos entre hileras de edificios (personalizable).
+    if waypoints:
+        waypoints_2d = [(float(p[0]), float(p[1])) for p in waypoints]
+        if len(waypoints_2d) < 2:
+            raise ValueError("la ruta necesita al menos dos puntos")
+    else:
+        waypoints_2d = list(DEFAULT_WAYPOINTS_2D)
+    # Altitud variable: crucero y descenso suave en las pasadas centrales.
     path = _catmull_rom(waypoints_2d, samples_per_segment=18)
-    cruise_speed = 13.5
+    cruise_speed = float(speed_mps)
     samples_2d = _resample_path(path, cruise_speed, hz=10.0)
     duration = samples_2d[-1]["t"] if samples_2d else 1.0
 
@@ -504,8 +520,8 @@ def build_mission(scene: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     for i, s in enumerate(samples_2d):
         u = i / max(1, n - 1)
         # Perfil de altitud: ascenso, crucero, descenso en la pasada central.
-        alt = 38.0 + 8.0 * math.sin(math.pi * u) - 10.0 * math.exp(-((u - 0.52) / 0.08) ** 2)
-        s["y"] = max(18.0, alt)
+        alt = cruise_alt_m + 6.0 * math.sin(math.pi * u) - 8.0 * math.exp(-((u - 0.52) / 0.08) ** 2)
+        s["y"] = max(14.0, alt)
         # Rumbo a partir de la velocidad (mira hacia adelante).
         i0, i1 = max(0, i - 2), min(n - 1, i + 2)
         dx, dz = xs[i1] - xs[i0], zs[i1] - zs[i0]
@@ -600,13 +616,14 @@ def build_mission(scene: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
             "path_length_m": round(sum(math.hypot(xs[i] - xs[i - 1], zs[i] - zs[i - 1]) for i in range(1, n)), 1),
         },
     }
-    with open(MISSION_PATH, "w", encoding="utf-8") as f:
-        json.dump(mission, f, ensure_ascii=False, separators=(",", ":"))
-    print(
-        f"[campus] Misión guardada en {MISSION_PATH} "
-        f"({len(samples)} muestras, {duration:.1f} s, INS RMSE {mission['metrics']['ins_rmse_m']:.1f} m, "
-        f"EKF RMSE {mission['metrics']['ekf_rmse_m']:.1f} m)"
-    )
+    if write:
+        with open(MISSION_PATH, "w", encoding="utf-8") as f:
+            json.dump(mission, f, ensure_ascii=False, separators=(",", ":"))
+        print(
+            f"[campus] Misión guardada en {MISSION_PATH} "
+            f"({len(samples)} muestras, {duration:.1f} s, INS RMSE {mission['metrics']['ins_rmse_m']:.1f} m, "
+            f"EKF RMSE {mission['metrics']['ekf_rmse_m']:.1f} m)"
+        )
     return mission
 
 
